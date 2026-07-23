@@ -717,7 +717,6 @@
       <button
         class="btn-delete-job"
         onclick="openDeleteModal('{{ job.id }}', '{{ job.video_file.name|slice:"13:"|escapejs }}')"
-        {% if job.status == 'processing' or job.status == 'pending' %}disabled title="Cannot delete while processing"{% endif %}
         aria-label="Delete job"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
