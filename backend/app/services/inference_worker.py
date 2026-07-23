@@ -39,7 +39,12 @@ def _load_models_once() -> None:
     if _models_loaded:
         return
 
-    sys.path.insert(0, str(Path(__file__).parents[4]))  # repo root
+    # Add the root directory to sys.path so 'ml' module can be imported
+    # In Docker, it's typically '/', in local dev it's 3 levels up
+    current_path = Path(__file__).resolve()
+    repo_root = str(current_path.parents[3]) if len(current_path.parents) > 3 else "/"
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
 
     from ml.models.yolo_detector import YOLODetector
     from ml.models.pose_estimator import PoseEstimator
