@@ -844,8 +844,7 @@
   // ── Delete modal ─────────────────────────────────────────────
   function openDeleteModal(jobId, fileName) {
     document.getElementById('delFileName').textContent = fileName || jobId;
-    document.getElementById('delForm').action =
-      `/exam-control/analyze-video/${jobId}/delete/`;
+    document.getElementById('delForm').action = `/analyze-video/${jobId}/delete/`;
     document.getElementById('delModalBackdrop').classList.add('open');
     document.body.style.overflow = 'hidden';
   }
