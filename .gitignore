@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg-link
+pip-wheel-metadata/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+venv/
+.venv/
+env/
+
+# Model weights (large binary files)
+ml/weights/*.pt
+ml/weights/*.pth
+ml/weights/*.onnx
+ml/weights/*.engine
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Django
+dashboard/staticfiles/
+dashboard/media/
+*.sqlite3
+
+# Docker
+.dockerignore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Jupyter checkpoints only (keep .ipynb notebooks)
+.ipynb_checkpoints/
+
+# Uploaded media files (videos, images from users)
+media/cctv_uploads/
+media/evidence/
+backend/media/
+
+# celery schedule db
+*.db

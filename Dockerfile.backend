@@ -1,0 +1,41 @@
+# ============================================================
+# ExamGuard AI — FastAPI Backend Dockerfile
+# GPU-accelerated inference with CUDA 12.1 + Python 3.11
+# ============================================================
+
+FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
+
+# System dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 \
+    python3.11-dev \
+    python3-pip \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgl1-mesa-glx \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Make python3.11 the default python
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 \
+ && update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
+
+WORKDIR /app
+
+# Install Python dependencies first (Docker layer cache)
+COPY backend/requirements.txt backend_reqs.txt
+COPY ml/requirements.txt ml_reqs.txt
+RUN pip install --default-timeout=1000 --no-cache-dir -r backend_reqs.txt -r ml_reqs.txt
+
+# Copy source
+COPY backend/ /app/
+COPY ml/ /ml/
+
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+EXPOSE 8000
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

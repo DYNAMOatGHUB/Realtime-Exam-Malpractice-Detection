@@ -1,0 +1,40 @@
+# ============================================================
+# ExamGuard AI — Celery Worker Dockerfile
+# Shares the same CUDA base as the backend for GPU inference
+# ============================================================
+
+FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 \
+    python3.11-dev \
+    python3-pip \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgl1-mesa-glx \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 \
+ && update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
+
+WORKDIR /app
+
+COPY backend/requirements.txt backend_reqs.txt
+COPY ml/requirements.txt ml_reqs.txt
+RUN pip install --default-timeout=1000 --no-cache-dir -r backend_reqs.txt -r ml_reqs.txt
+
+COPY backend/ /app/
+COPY ml/ /ml/
+
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+# Celery worker with GPU concurrency=1 (single GPU thread)
+CMD ["celery", "-A", "app.celery_app", "worker", \
+     "--loglevel=info", \
+     "--concurrency=1", \
+     "--pool=solo", \
+     "-Q", "inference,frames,alerts"]

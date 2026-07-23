@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}ML Models{% endblock %}
+{% block page_title %}ML Model Weights{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <p class="page-desc">Manage YOLO, LSTM and TensorRT weight files. Uploading a new file replaces inference on next restart.</p>
+  <a href="{% url 'admin_panel:model_upload' %}" class="btn btn-primary">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    Upload Weights
+  </a>
+</div>
+
+<div class="card glass">
+  <div class="card-body table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>File</th>
+          <th>Type</th>
+          <th>Size</th>
+          <th>Last Modified</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for w in weights %}
+        <tr>
+          <td><code>{{ w.name }}</code></td>
+          <td>
+            {% if ".engine" in w.name %}<span class="badge-pill badge-green">TensorRT</span>
+            {% elif ".onnx" in w.name %}<span class="badge-pill badge-blue">ONNX</span>
+            {% elif ".pt" in w.name or ".pth" in w.name %}<span class="badge-pill badge-amber">PyTorch</span>
+            {% else %}<span class="badge-pill badge-gray">Unknown</span>
+            {% endif %}
+          </td>
+          <td>{{ w.size_mb }} MB</td>
+          <td class="text-muted text-sm">{{ w.modified|date:"d M Y H:i" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-center text-muted py-8">No weight files found in <code>/app/ml/weights/</code>.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

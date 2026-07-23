@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Live Monitor{% endblock %}
+{% block page_title %}Live Monitor{% endblock %}
+
+{% block extra_head %}
+<style>
+  .stream-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 1.25rem; }
+  .stream-tile { position: relative; border-radius: 16px; overflow: hidden; background: #0d0f1a; border: 1px solid rgba(255,255,255,0.08); }
+  .stream-video { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; background: #05070f; }
+  .stream-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; }
+  .stream-info { position: absolute; bottom: 0; left: 0; right: 0; padding: .75rem 1rem; background: linear-gradient(transparent, rgba(0,0,0,.85)); }
+  .stream-cam-id { font-size: .75rem; color: #94a3b8; font-family: monospace; }
+  .stream-hall { font-weight: 600; font-size: .95rem; color: #fff; }
+  .stream-badge { position: absolute; top: .75rem; right: .75rem; display: flex; gap: .5rem; }
+  .detection-box { position: absolute; border: 2px solid #f59e0b; border-radius: 4px; background: rgba(245,158,11,.08); }
+  .stream-fps { position: absolute; top: .75rem; left: .75rem; font-size: .7rem; font-family: monospace; color: #22c55e; background: rgba(0,0,0,.5); padding: .2rem .4rem; border-radius: 4px; }
+  .no-streams { text-align: center; padding: 4rem 2rem; color: #64748b; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <p class="page-desc">Real-time CCTV feeds with AI detection overlays. Bounding boxes appear when behaviour is flagged.</p>
+  <div class="page-header-actions">
+    <div class="toggle-group">
+      <button class="toggle-btn active" id="gridViewBtn">Grid</button>
+      <button class="toggle-btn" id="listViewBtn">List</button>
+    </div>
+    <div class="status-chip" id="wsStatus">
+      <span class="pulse-dot pulse-green"></span>WS Connected
+    </div>
+  </div>
+</div>
+
+<div class="stream-grid" id="streamGrid">
+  {% for mapping in active_mappings %}
+  <div class="stream-tile" id="tile-{{ mapping.camera_id }}">
+    <img src="/api/stream/mjpeg/{{ mapping.camera_id }}/"
+         class="stream-video"
+         alt="Camera {{ mapping.camera_id }}"
+         onerror="this.src='{% static 'img/no_signal.svg' %}'" />
+    <div class="stream-overlay" id="overlay-{{ mapping.camera_id }}"></div>
+    <div class="stream-badge">
+      <span class="badge-pill badge-green" id="status-{{ mapping.camera_id }}">Live</span>
+    </div>
+    <span class="stream-fps" id="fps-{{ mapping.camera_id }}">-- fps</span>
+    <div class="stream-info">
+      <div class="stream-hall">{{ mapping.lecture_hall.name }}</div>
+      <div class="stream-cam-id">CAM {{ mapping.camera_id }} · {{ mapping.invigilator_name }}</div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="no-streams glass">
+    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+    <p class="mt-4">No active camera streams. <a href="{% url 'exam_control:lh_mapping' %}" class="link">Add a mapping</a> to begin.</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Connect to WebSocket for live detection events
+  const cameraIds = {{ camera_ids_json|safe }};
+  const sockets = {};
+
+  cameraIds.forEach(camId => {
+    const ws = new WebSocket(`ws://${window.location.host}/ws/live/${camId}/`);
+    sockets[camId] = ws;
+
+    ws.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      const overlay = document.getElementById(`overlay-${camId}`);
+      const fpsEl = document.getElementById(`fps-${camId}`);
+      if (!overlay) return;
+
+      // Clear previous boxes
+      overlay.querySelectorAll('.detection-box').forEach(b => b.remove());
+
+      // Render new detection boxes
+      if (data.detections) {
+        data.detections.forEach(det => {
+          const box = document.createElement('div');
+          box.className = 'detection-box';
+          box.style.left = `${det.x1_pct}%`;
+          box.style.top = `${det.y1_pct}%`;
+          box.style.width = `${(det.x2_pct - det.x1_pct)}%`;
+          box.style.height = `${(det.y2_pct - det.y1_pct)}%`;
+          box.style.borderColor = det.confidence > 0.8 ? '#ef4444' : '#f59e0b';
+          overlay.appendChild(box);
+        });
+      }
+      if (data.fps !== undefined) fpsEl.textContent = `${data.fps.toFixed(1)} fps`;
+    };
+
+    ws.onclose = () => {
+      const statusEl = document.getElementById(`status-${camId}`);
+      if (statusEl) { statusEl.textContent = 'Offline'; statusEl.className = 'badge-pill badge-red'; }
+      document.getElementById('wsStatus').innerHTML = '<span class="pulse-dot pulse-red"></span>Reconnecting…';
+    };
+  });
+</script>
+{% endblock %}

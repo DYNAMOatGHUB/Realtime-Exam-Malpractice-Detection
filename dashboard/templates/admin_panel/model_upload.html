@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Upload Model{% endblock %}
+{% block page_title %}Upload Model Weights{% endblock %}
+
+{% block content %}
+<div class="form-page-wrap">
+  <div class="card glass">
+    <div class="card-header">
+      <h2 class="card-title">Upload Weight File</h2>
+    </div>
+    <div class="card-body">
+      <p class="text-muted mb-4">Supported formats: <code>.pt</code>, <code>.pth</code>, <code>.onnx</code>, <code>.engine</code></p>
+      <form method="post" enctype="multipart/form-data" class="detail-form" id="uploadForm">
+        {% csrf_token %}
+        <div class="form-group">
+          <label class="form-label">Weight File</label>
+          <div class="file-drop-zone" id="dropZone">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <p>Drag & drop or <label for="id_weight_file" class="link" style="cursor:pointer">browse</label></p>
+            <input type="file" name="weight_file" id="id_weight_file" accept=".pt,.pth,.onnx,.engine" style="display:none" />
+            <p class="file-name text-muted text-sm" id="fileName">No file selected</p>
+          </div>
+        </div>
+        <div class="form-actions">
+          <a href="{% url 'admin_panel:model_list' %}" class="btn btn-ghost">Cancel</a>
+          <button type="submit" class="btn btn-primary" id="uploadBtn">Upload</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const input = document.getElementById('id_weight_file');
+  const fileName = document.getElementById('fileName');
+  const dropZone = document.getElementById('dropZone');
+
+  input.addEventListener('change', () => {
+    fileName.textContent = input.files[0]?.name || 'No file selected';
+  });
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    if (e.dataTransfer.files.length) {
+      const dt = new DataTransfer();
+      dt.items.add(e.dataTransfer.files[0]);
+      input.files = dt.files;
+      fileName.textContent = e.dataTransfer.files[0].name;
+    }
+  });
+</script>
+{% endblock %}

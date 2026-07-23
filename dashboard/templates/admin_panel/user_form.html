@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}{{ action }} User{% endblock %}
+{% block page_title %}{{ action }} User{% endblock %}
+
+{% block content %}
+<div class="form-page-wrap">
+  <div class="card glass">
+    <div class="card-header">
+      <h2 class="card-title">{{ action }} User Account</h2>
+    </div>
+    <div class="card-body">
+      <form method="post" class="detail-form">
+        {% csrf_token %}
+        {% for field in form %}
+        <div class="form-group">
+          <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}<p class="form-hint">{{ field.help_text }}</p>{% endif %}
+          {% if field.errors %}<span class="field-error">{{ field.errors.0 }}</span>{% endif %}
+        </div>
+        {% endfor %}
+        <div class="form-actions">
+          <a href="{% url 'admin_panel:user_list' %}" class="btn btn-ghost">Cancel</a>
+          <button type="submit" class="btn btn-primary">{{ action }} User</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

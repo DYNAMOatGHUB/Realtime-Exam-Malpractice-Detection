@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Alert Log{% endblock %}
+{% block page_title %}Alert Log{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <p class="page-desc">Full audit trail of all flagged events, email send status, and invigilator actions.</p>
+  <form class="filter-form" method="get" id="alertFilterForm">
+    <div class="filter-group">
+      <select name="status" class="form-control form-control-sm" onchange="this.form.submit()" id="statusFilter">
+        <option value="">All statuses</option>
+        <option value="PENDING" {% if request.GET.status == 'PENDING' %}selected{% endif %}>Pending</option>
+        <option value="CONFIRMED" {% if request.GET.status == 'CONFIRMED' %}selected{% endif %}>Confirmed</option>
+        <option value="DISMISSED" {% if request.GET.status == 'DISMISSED' %}selected{% endif %}>Dismissed</option>
+      </select>
+      <select name="behaviour" class="form-control form-control-sm" onchange="this.form.submit()" id="behaviourFilter">
+        <option value="">All behaviours</option>
+        <option value="PHONE_USE">Phone use</option>
+        <option value="HEAD_TURN">Head turning</option>
+        <option value="PAPER_EXCHANGE">Paper exchange</option>
+        <option value="UNAUTHORIZED_EXIT">Unauthorized exit</option>
+        <option value="LOOKING_AROUND">Looking around</option>
+      </select>
+      <input type="date" name="date" class="form-control form-control-sm" value="{{ request.GET.date }}" onchange="this.form.submit()" id="dateFilter" />
+    </div>
+  </form>
+</div>
+
+<div class="card glass">
+  <div class="card-body table-wrapper">
+    <table class="data-table" id="alertTable">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Camera</th>
+          <th>Hall</th>
+          <th>Behaviour</th>
+          <th>Confidence</th>
+          <th>Email</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for event in events %}
+        <tr>
+          <td class="text-muted text-sm">{{ event.detected_at|date:"d M Y H:i:s" }}</td>
+          <td><code class="cam-id">{{ event.camera_id }}</code></td>
+          <td>{{ event.lecture_hall_name|default:"—" }}</td>
+          <td><span class="behaviour-tag">{{ event.get_behaviour_type_display }}</span></td>
+          <td>
+            <div class="conf-bar-wrap">
+              <div class="conf-bar" style="--conf: {{ event.confidence_score|floatformat:0 }}%"></div>
+              <span>{{ event.confidence_score|floatformat:1 }}%</span>
+            </div>
+          </td>
+          <td>
+            {% if event.email_sent %}
+            <span class="badge-status badge-active" title="{{ event.email_sent_at }}">✓ Sent</span>
+            {% else %}
+            <span class="badge-status badge-inactive">Not sent</span>
+            {% endif %}
+          </td>
+          <td><span class="badge-status badge-{{ event.review_status|lower }}">{{ event.review_status }}</span></td>
+          <td class="action-cell">
+            {% if event.frame_url %}
+            <a href="{{ event.frame_url }}" target="_blank" class="btn btn-sm btn-ghost" title="View frame">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            </a>
+            {% endif %}
+            {% if event.review_status == 'PENDING' %}
+            <form method="post" action="{% url 'exam_control:confirm_event' event.pk %}" style="display:inline">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-ghost" title="Confirm">✓</button>
+            </form>
+            <form method="post" action="{% url 'exam_control:dismiss_event' event.pk %}" style="display:inline">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-danger-ghost" title="Dismiss">✕</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="text-center text-muted py-8">No events match the current filters.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if is_paginated %}
+<div class="pagination">
+  {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost btn-sm">← Prev</a>{% endif %}
+  <span class="page-info">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost btn-sm">Next →</a>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

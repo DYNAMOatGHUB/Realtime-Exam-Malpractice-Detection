@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Review Queue{% endblock %}
+{% block page_title %}Review Queue{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <p class="page-desc">Medium-confidence events awaiting human review. Confirm to trigger alert or dismiss if false positive.</p>
+  <div class="badge-pill badge-amber">{{ events.count }} Pending</div>
+</div>
+
+{% if events %}
+<div class="review-grid">
+  {% for event in events %}
+  <div class="review-card glass" id="review-{{ event.pk }}">
+    <!-- Evidence frame thumbnail -->
+    <div class="review-thumb-wrap">
+      {% if event.frame_url %}
+      <img src="{{ event.frame_url }}" alt="Evidence frame" class="review-thumb" loading="lazy" />
+      {% else %}
+      <div class="review-thumb-placeholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <span>No frame</span>
+      </div>
+      {% endif %}
+      <div class="review-thumb-overlay">
+        <span class="conf-pill {% if event.confidence_score > 0.7 %}conf-high{% else %}conf-mid{% endif %}">
+          {{ event.confidence_score|floatformat:1 }}% confidence
+        </span>
+      </div>
+    </div>
+    <!-- Details -->
+    <div class="review-details">
+      <div class="review-behaviour">{{ event.get_behaviour_type_display }}</div>
+      <div class="review-meta">
+        <span>📹 Cam {{ event.camera_id }}</span>
+        <span>🕐 {{ event.detected_at|date:"d M H:i:s" }}</span>
+        {% if event.invigilator_name %}<span>👤 {{ event.invigilator_name }}</span>{% endif %}
+      </div>
+      {% if event.notes %}
+      <p class="review-notes">{{ event.notes }}</p>
+      {% endif %}
+    </div>
+    <!-- Actions -->
+    <div class="review-actions">
+      <form method="post" action="{% url 'exam_control:confirm_event' event.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary btn-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Confirm & Alert
+        </button>
+      </form>
+      <form method="post" action="{% url 'exam_control:dismiss_event' event.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-ghost btn-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          Dismiss
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state glass">
+  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="1.5">
+    <path d="M9 11l3 3L22 4"/>
+    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+  </svg>
+  <h3>All Clear</h3>
+  <p>No events are pending review at this time.</p>
+</div>
+{% endif %}
+
+<!-- Pagination -->
+{% if is_paginated %}
+<div class="pagination">
+  {% if page_obj.has_previous %}
+  <a href="?page={{ page_obj.previous_page_number }}" class="btn btn-ghost btn-sm">← Prev</a>
+  {% endif %}
+  <span class="page-info">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}
+  <a href="?page={{ page_obj.next_page_number }}" class="btn btn-ghost btn-sm">Next →</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

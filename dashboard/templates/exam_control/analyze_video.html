@@ -1,0 +1,689 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Analyze Video{% endblock %}
+{% block page_title %}Analyze Video{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ── Upload card ─────────────────────────────────────────── */
+  .upload-section {
+    background: linear-gradient(135deg, rgba(15,23,42,0.9) 0%, rgba(30,41,59,0.7) 100%);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .upload-section::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(239,68,68,0.1) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .upload-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.75rem;
+  }
+
+  .upload-icon-wrap {
+    width: 48px; height: 48px;
+    background: linear-gradient(135deg, rgba(239,68,68,0.2), rgba(220,38,38,0.1));
+    border: 1px solid rgba(239,68,68,0.3);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    color: #ef4444;
+    flex-shrink: 0;
+  }
+
+  .upload-header-text h3 {
+    font-size: 1.15rem; font-weight: 700; color: #f1f5f9; margin: 0 0 2px;
+  }
+
+  .upload-header-text p {
+    font-size: 0.82rem; color: #64748b; margin: 0;
+  }
+
+  /* ── Drag-and-drop zone ──────────────────────────────────── */
+  .drop-zone {
+    border: 2px dashed rgba(148,163,184,0.2);
+    border-radius: 12px;
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s;
+    position: relative;
+    margin-bottom: 1.25rem;
+  }
+
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: rgba(239,68,68,0.5);
+    background: rgba(239,68,68,0.04);
+  }
+
+  .drop-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .drop-icon {
+    width: 48px; height: 48px;
+    margin: 0 auto 0.75rem;
+    color: #475569;
+    transition: color 0.2s;
+  }
+
+  .drop-zone:hover .drop-icon, .drop-zone.drag-over .drop-icon {
+    color: #ef4444;
+  }
+
+  .drop-label {
+    font-size: 0.9rem; color: #94a3b8; margin-bottom: 4px;
+  }
+
+  .drop-label strong { color: #ef4444; }
+
+  .drop-hint {
+    font-size: 0.75rem; color: #475569;
+  }
+
+  .selected-file-name {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    margin-top: 0.75rem;
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.2);
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    font-size: 0.82rem;
+    color: #fca5a5;
+  }
+
+  .selected-file-name svg { color: #ef4444; flex-shrink: 0; }
+
+  /* ── Form row ────────────────────────────────────────────── */
+  .form-row-inline {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1rem;
+    align-items: end;
+  }
+
+  .upload-submit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 0.7rem 1.5rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    box-shadow: 0 4px 16px rgba(239,68,68,0.35);
+    height: 42px;
+  }
+
+  .upload-submit-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(239,68,68,0.45);
+  }
+
+  .upload-submit-btn:disabled {
+    opacity: 0.5; cursor: not-allowed; transform: none;
+  }
+
+  /* ── Progress overlay ────────────────────────────────────── */
+  .upload-progress {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    margin-top: 1rem;
+    font-size: 0.82rem;
+    color: #94a3b8;
+  }
+
+  .upload-spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.15);
+    border-top-color: #ef4444;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Jobs section ────────────────────────────────────────── */
+  .jobs-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 2.5rem 0 1rem;
+  }
+
+  .jobs-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .jobs-count-pill {
+    background: rgba(255,255,255,0.07);
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .job-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 1.1rem;
+  }
+
+  /* ── Job card ────────────────────────────────────────────── */
+  .job-card {
+    background: rgba(13,15,26,0.9);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .job-card:hover {
+    border-color: rgba(255,255,255,0.14);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+
+  .job-card.status-processing {
+    border-color: rgba(251,191,36,0.25);
+  }
+
+  .job-card.status-completed {
+    border-color: rgba(34,197,94,0.2);
+  }
+
+  .job-card.status-failed {
+    border-color: rgba(239,68,68,0.2);
+  }
+
+  /* Glow accent */
+  .job-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    border-radius: 14px 14px 0 0;
+  }
+
+  .job-card.status-processing::before { background: linear-gradient(90deg, transparent, #fbbf24, transparent); }
+  .job-card.status-completed::before  { background: linear-gradient(90deg, transparent, #22c55e, transparent); }
+  .job-card.status-failed::before     { background: linear-gradient(90deg, transparent, #ef4444, transparent); }
+
+  .job-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .job-title {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #f1f5f9;
+    line-height: 1.3;
+  }
+
+  .job-subtitle {
+    font-size: 0.78rem;
+    color: #475569;
+    margin-top: 2px;
+  }
+
+  .badge-status {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .badge-green  { background: rgba(34,197,94,0.15);  color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+  .badge-red    { background: rgba(239,68,68,0.15);  color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+  .badge-yellow { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+  .badge-gray   { background: rgba(100,116,139,0.15); color: #94a3b8; border: 1px solid rgba(100,116,139,0.3); }
+
+  /* ── Job meta row ────────────────────────────────────────── */
+  .job-meta-row {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .job-filename {
+    font-size: 0.78rem;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+  }
+
+  .job-filename span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .anomaly-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.78rem;
+    color: #ef4444;
+    font-weight: 600;
+  }
+
+  /* ── Job stats mini ──────────────────────────────────────── */
+  .job-stats-mini {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .mini-stat {
+    font-size: 0.72rem;
+    color: #475569;
+  }
+
+  .mini-stat strong { color: #94a3b8; font-weight: 600; }
+
+  /* ── Action buttons ──────────────────────────────────────── */
+  .job-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .btn-analyze-live {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    background: linear-gradient(135deg, rgba(239,68,68,0.15), rgba(220,38,38,0.08));
+    color: #f87171;
+    border: 1px solid rgba(239,68,68,0.3);
+    border-radius: 9px;
+    padding: 0.6rem 1rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .btn-analyze-live:hover {
+    background: linear-gradient(135deg, rgba(239,68,68,0.25), rgba(220,38,38,0.15));
+    border-color: rgba(239,68,68,0.5);
+    color: #fca5a5;
+    transform: translateY(-1px);
+  }
+
+  .btn-view-video {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    background: rgba(255,255,255,0.04);
+    color: #64748b;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 9px;
+    padding: 0.6rem 1rem;
+    font-size: 0.82rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .btn-view-video:hover {
+    background: rgba(255,255,255,0.08);
+    color: #94a3b8;
+  }
+
+  /* ── Processing spinner inside card ─────────────────────── */
+  .processing-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.78rem;
+    color: #92400e;
+    background: rgba(251,191,36,0.07);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .card-spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(251,191,36,0.2);
+    border-top-color: #fbbf24;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+
+  /* ── Empty state ─────────────────────────────────────────── */
+  .empty-jobs {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3.5rem;
+    color: #334155;
+    gap: 0.75rem;
+    text-align: center;
+  }
+
+  .empty-jobs svg { color: #1e293b; }
+  .empty-jobs strong { color: #475569; font-size: 0.95rem; }
+  .empty-jobs span { font-size: 0.82rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 1.5rem;">
+  <p class="page-desc">
+    Upload a recorded exam hall video for AI-powered malpractice detection.
+    The system will scan every frame and flag suspicious events with
+    <strong style="color:#ef4444;">red bounding boxes</strong> in real-time.
+  </p>
+</div>
+
+<!-- ── Upload Section ────────────────────────────────────────── -->
+<div class="upload-section">
+  <div class="upload-header">
+    <div class="upload-icon-wrap">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M15 10l4.553-2.069A1 1 0 0 1 21 8.87v6.26a1 1 0 0 1-1.447.9L15 14M3 8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8z"/>
+      </svg>
+    </div>
+    <div class="upload-header-text">
+      <h3>Start New Analysis</h3>
+      <p>Upload an MP4 video from an exam hall — AI will annotate anomalies frame by frame</p>
+    </div>
+  </div>
+
+  <form method="post" action="{% url 'exam_control:upload_video' %}"
+        id="uploadForm" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <!-- Mapping selector -->
+    <div style="margin-bottom: 1rem;">
+      <label class="form-label">Lecture Hall Mapping</label>
+      {{ form.mapping }}
+      {% if form.mapping.errors %}
+        <span class="field-error">{{ form.mapping.errors.0 }}</span>
+      {% endif %}
+    </div>
+
+    <!-- Drag-and-drop zone -->
+    <div class="drop-zone" id="dropZone">
+      {{ form.video_file }}
+      <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M7 16a4 4 0 0 1-.88-7.903A5 5 0 1 1 15.9 6L16 6a5 5 0 0 1 1 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+      </svg>
+      <div class="drop-label">
+        <strong>Click to choose</strong> or drag &amp; drop a video file
+      </div>
+      <div class="drop-hint">MP4, AVI, MOV &nbsp;·&nbsp; Max 2 GB</div>
+    </div>
+
+    <!-- Selected file display -->
+    <div class="selected-file-name" id="selectedFileName">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M15 10l4.553-2.069A1 1 0 0 1 21 8.87v6.26a1 1 0 0 1-1.447.9L15 14"/>
+        <rect x="2" y="6" width="13" height="12" rx="2"/>
+      </svg>
+      <span id="fileNameText">—</span>
+      <span id="fileSizeText" style="margin-left: auto; color: #64748b;"></span>
+    </div>
+
+    {% if form.video_file.errors %}
+      <span class="field-error">{{ form.video_file.errors.0 }}</span>
+    {% endif %}
+
+    <!-- Submit row -->
+    <div style="display: flex; align-items: center; justify-content: flex-end; margin-top: 1.25rem; gap: 1rem;">
+      <div class="upload-progress" id="uploadProgress">
+        <div class="upload-spinner"></div>
+        <span>Uploading &amp; dispatching to AI pipeline…</span>
+      </div>
+      <button type="submit" class="upload-submit-btn" id="submitBtn" disabled>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        Upload &amp; Process
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- ── Recent Jobs ────────────────────────────────────────────── -->
+<div class="jobs-header">
+  <div class="jobs-title">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="2" y="3" width="20" height="14" rx="2"/>
+      <path d="M8 21h8M12 17v4"/>
+    </svg>
+    Processing Jobs
+    <span class="jobs-count-pill">{{ jobs|length }} total</span>
+  </div>
+</div>
+
+<div class="job-grid">
+  {% for job in jobs %}
+  <div class="job-card status-{{ job.status }}">
+
+    <!-- Top accent glow is handled via CSS ::before -->
+
+    <div class="job-header">
+      <div>
+        <div class="job-title">
+          {% if job.mapping %}
+            {{ job.mapping.lecture_hall.name }}
+            <span style="font-size:0.75rem; color:#475569; font-weight:400;">
+              · {{ job.mapping.lecture_hall.lh_code }}
+            </span>
+          {% else %}
+            <span style="color:#475569;">No Mapping</span>
+          {% endif %}
+        </div>
+        <div class="job-subtitle">{{ job.created_at|date:"M d, Y · H:i" }}</div>
+      </div>
+      <span class="badge-status badge-{% if job.status == 'completed' %}green{% elif job.status == 'failed' %}red{% elif job.status == 'processing' %}yellow{% else %}gray{% endif %}">
+        {{ job.get_status_display }}
+      </span>
+    </div>
+
+    <div class="job-meta-row">
+      <div class="job-filename">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M15 10l4.553-2.069A1 1 0 0 1 21 8.87v6.26a1 1 0 0 1-1.447.9L15 14"/>
+          <rect x="2" y="6" width="13" height="12" rx="2"/>
+        </svg>
+        <span title="{{ job.video_file.name }}">{{ job.video_file.name|slice:"13:" }}</span>
+      </div>
+
+      {% if job.status == 'completed' %}
+      <div class="anomaly-badge">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        {{ job.total_anomalies }} anomali{{ job.total_anomalies|pluralize:"y,es" }} detected
+      </div>
+      {% endif %}
+
+      {% if job.mapping %}
+      <div class="job-stats-mini">
+        <div class="mini-stat">Invigilator: <strong>{{ job.mapping.invigilator.full_name }}</strong></div>
+        {% if job.mapping.exam_session_label %}
+        <div class="mini-stat">Session: <strong>{{ job.mapping.exam_session_label }}</strong></div>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    {% if job.status == 'processing' or job.status == 'pending' %}
+    <div class="processing-row">
+      <div class="card-spinner"></div>
+      <span style="color:#fbbf24;">Processing in AI pipeline — analysis running…</span>
+    </div>
+    {% endif %}
+
+    <!-- Action buttons -->
+    <div class="job-actions">
+      <a href="{% url 'exam_control:analyze_video_detail' job.id %}"
+         class="btn-analyze-live">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="12" cy="12" r="10"/>
+          <polygon points="10 8 16 12 10 16 10 8"/>
+        </svg>
+        {% if job.status == 'processing' or job.status == 'pending' %}
+          View Live Analysis
+        {% else %}
+          Replay Analysis
+        {% endif %}
+      </a>
+
+      {% if job.status == 'completed' and job.output_video_file %}
+      <a href="{{ job.output_video_file.url }}" target="_blank" class="btn-view-video">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        Annotated Video
+      </a>
+      {% endif %}
+    </div>
+
+  </div>
+  {% empty %}
+  <div class="empty-jobs">
+    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+      <rect x="2" y="3" width="20" height="14" rx="2"/>
+      <path d="M8 21h8M12 17v4"/>
+      <path d="M9 10l2 2 4-4" stroke-width="1.5"/>
+    </svg>
+    <strong>No processing jobs yet</strong>
+    <span>Upload a video above to start your first analysis</span>
+  </div>
+  {% endfor %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // ── Drag-and-drop + file validation ──────────────────────────
+  const dropZone  = document.getElementById('dropZone');
+  const fileInput = dropZone.querySelector('input[type="file"]');
+  const submitBtn = document.getElementById('submitBtn');
+  const selectedFileRow = document.getElementById('selectedFileName');
+  const fileNameText    = document.getElementById('fileNameText');
+  const fileSizeText    = document.getElementById('fileSizeText');
+  const uploadForm      = document.getElementById('uploadForm');
+  const uploadProgress  = document.getElementById('uploadProgress');
+
+  const ALLOWED = ['video/mp4', 'video/avi', 'video/quicktime', 'video/x-msvideo',
+                   'video/x-matroska', 'video/webm', 'video/mpeg'];
+
+  function formatSize(bytes) {
+    if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
+    if (bytes >= 1048576)    return (bytes / 1048576).toFixed(1) + ' MB';
+    return (bytes / 1024).toFixed(0) + ' KB';
+  }
+
+  function handleFile(file) {
+    if (!file) return;
+
+    if (!ALLOWED.includes(file.type) && !file.name.match(/\.(mp4|avi|mov|mkv|webm|mpg|mpeg)$/i)) {
+      alert('Please select a video file (MP4, AVI, MOV, MKV, etc.)');
+      fileInput.value = '';
+      return;
+    }
+
+    fileNameText.textContent = file.name;
+    fileSizeText.textContent = formatSize(file.size);
+    selectedFileRow.style.display = 'flex';
+    submitBtn.disabled = false;
+  }
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) handleFile(fileInput.files[0]);
+  });
+
+  // Drag-over highlight
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('drag-over');
+  });
+
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      fileInput.files = dt.files;
+      handleFile(file);
+    }
+  });
+
+  // Show spinner on submit
+  uploadForm.addEventListener('submit', (e) => {
+    if (!fileInput.files.length) {
+      e.preventDefault();
+      return;
+    }
+    submitBtn.disabled = true;
+    uploadProgress.style.display = 'flex';
+  });
+</script>
+{% endblock %}

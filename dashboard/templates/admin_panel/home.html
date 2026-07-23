@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Admin Home{% endblock %}
+{% block page_title %}Admin Overview{% endblock %}
+
+{% block content %}
+<div class="stats-grid">
+  <div class="stat-card glass">
+    <div class="stat-icon stat-icon-blue">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">{{ total_users }}</div>
+      <div class="stat-label">Total Users</div>
+    </div>
+    <a href="{% url 'admin_panel:user_list' %}" class="stat-trend trend-up">Manage →</a>
+  </div>
+  <div class="stat-card glass">
+    <div class="stat-icon stat-icon-purple">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">{{ hec_users }}</div>
+      <div class="stat-label">HEC Users</div>
+    </div>
+  </div>
+  <div class="stat-card glass">
+    <div class="stat-icon stat-icon-green">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">{{ admin_users }}</div>
+      <div class="stat-label">Admin Users</div>
+    </div>
+  </div>
+</div>
+
+<div class="admin-shortcuts mt-6">
+  <a href="{% url 'admin_panel:user_create' %}" class="shortcut-card glass">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+    <span>Create User</span>
+  </a>
+  <a href="{% url 'admin_panel:model_upload' %}" class="shortcut-card glass">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    <span>Upload Model</span>
+  </a>
+  <a href="{% url 'admin_panel:system_health' %}" class="shortcut-card glass">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    <span>System Health</span>
+  </a>
+  <a href="/django-admin/" class="shortcut-card glass">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 1 0 4.93 19.07"/></svg>
+    <span>Django Admin</span>
+  </a>
+</div>
+{% endblock %}
