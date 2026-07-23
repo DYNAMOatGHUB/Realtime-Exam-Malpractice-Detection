@@ -8,6 +8,7 @@ urlpatterns = [
     path("django-admin/", admin.site.urls),
     path("accounts/", include("apps.accounts.urls")),
     path("", include("apps.exam_control.urls")),
+    path("exam-control/", include("apps.exam_control.urls")),  # Fallback for cached JS
     path("admin-panel/", include("apps.admin_panel.urls")),
 ]
 
