@@ -200,6 +200,39 @@ def analyze_video_detail(request, job_id):
 
 
 @hec_or_admin_required
+@require_POST
+def delete_job(request, job_id):
+    """
+    Delete a video analysis job and its associated video file from disk.
+    POST only — called via a small form with a CSRF token.
+    """
+    import os
+    job = get_object_or_404(VideoAnalysisJob, id=job_id)
+    filename = job.video_file.name if job.video_file else "unknown"
+
+    # 1. Delete the physical video file from media storage
+    try:
+        if job.video_file and job.video_file.storage.exists(job.video_file.name):
+            job.video_file.storage.delete(job.video_file.name)
+    except Exception as exc:
+        logger.warning("Could not delete video file %s: %s", filename, exc)
+
+    # 2. Delete output / annotated video if present
+    try:
+        if job.output_video_file and job.output_video_file.storage.exists(job.output_video_file.name):
+            job.output_video_file.storage.delete(job.output_video_file.name)
+    except Exception as exc:
+        logger.warning("Could not delete output file: %s", exc)
+
+    # 3. Delete the DB record
+    job.delete()
+
+    short_name = filename.split("/")[-1] if "/" in filename else filename
+    messages.success(request, f"Job and video \"{short_name}\" deleted successfully.")
+    return redirect("exam_control:analyze_video")
+
+
+@hec_or_admin_required
 def video_stream_proxy(request, job_id):
     """
     SSE proxy: forwards the FastAPI SSE stream to the browser.

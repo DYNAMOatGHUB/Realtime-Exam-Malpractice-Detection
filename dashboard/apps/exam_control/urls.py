@@ -19,6 +19,8 @@ urlpatterns = [
     path("analyze-video/upload/", views.upload_video, name="upload_video"),
     path("analyze-video/<uuid:job_id>/", views.analyze_video_detail, name="analyze_video_detail"),
     path("analyze-video/<uuid:job_id>/stream/", views.video_stream_proxy, name="video_stream_proxy"),
+    path("analyze-video/<uuid:job_id>/delete/", views.delete_job, name="delete_job"),
+
 
     # Review Queue (Layer 8)
     path("review-queue/", views.review_queue, name="review_queue"),
