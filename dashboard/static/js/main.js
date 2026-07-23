@@ -85,3 +85,33 @@ document.addEventListener('keydown', (e) => {
     });
   }
 });
+
+/* ---- Theme Toggle ---- */
+(function initThemeToggle() {
+  const btn = document.getElementById('themeToggle');
+  if (!btn) return;
+  const iconSun = btn.querySelector('.icon-sun');
+  const iconMoon = btn.querySelector('.icon-moon');
+
+  function updateIcons(theme) {
+    if (theme === 'light') {
+      iconSun.style.display = 'none';
+      iconMoon.style.display = 'block';
+    } else {
+      iconSun.style.display = 'block';
+      iconMoon.style.display = 'none';
+    }
+  }
+
+  // Initial state setup based on <html data-theme="">
+  const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+  updateIcons(currentTheme);
+
+  btn.addEventListener('click', () => {
+    const oldTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    const newTheme = oldTheme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    updateIcons(newTheme);
+  });
+})();

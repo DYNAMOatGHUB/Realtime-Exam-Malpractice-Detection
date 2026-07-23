@@ -21,6 +21,11 @@
   --glass-blur:   16px;
   --glass-border: rgba(255, 255, 255, 0.08);
 
+  /* Overlays */
+  --bg-hover:     rgba(255, 255, 255, 0.05);
+  --bg-input:     rgba(255, 255, 255, 0.04);
+  --bg-ghost:     rgba(255, 255, 255, 0.06);
+
   /* Brand */
   --brand:        #6366f1;
   --brand-light:  #818cf8;
@@ -47,6 +52,35 @@
 
   /* Transitions */
   --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="light"] {
+  /* Palette */
+  --bg-base:      #f1f5f9;
+  --bg-surface:   #f8fafc;
+  --bg-elevated:  #ffffff;
+  --border:       rgba(0, 0, 0, 0.08);
+  --border-hover: rgba(0, 0, 0, 0.15);
+
+  /* Glass */
+  --glass-bg:     rgba(255, 255, 255, 0.75);
+  --glass-border: rgba(0, 0, 0, 0.1);
+
+  /* Overlays */
+  --bg-hover:     rgba(0, 0, 0, 0.05);
+  --bg-input:     rgba(0, 0, 0, 0.03);
+  --bg-ghost:     rgba(0, 0, 0, 0.06);
+
+  /* Text */
+  --text-primary:   #0f172a;
+  --text-secondary: #475569;
+  --text-muted:     #64748b;
+  
+  /* Buttons & accents */
+  --brand:        #4f46e5;
+  --brand-light:  #6366f1;
+  --brand-dark:   #4338ca;
+  --brand-glow:   rgba(79, 70, 229, 0.2);
 }
 
 /* ============================================================
@@ -151,7 +185,7 @@ code { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: .85em; 
   position: relative;
 }
 .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; stroke: currentColor; }
-.nav-item:hover { background: rgba(255,255,255,.05); color: var(--text-primary); }
+.nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
 .nav-item.active {
   background: linear-gradient(135deg, rgba(99,102,241,.2), rgba(99,102,241,.08));
   color: var(--brand-light);
@@ -273,7 +307,7 @@ code { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: .85em; 
   display: none; /* shown on mobile via media query */
 }
 .sidebar-toggle svg { width: 20px; height: 20px; }
-.sidebar-toggle:hover { background: rgba(255,255,255,.05); color: var(--text-primary); }
+.sidebar-toggle:hover { background: var(--bg-hover); color: var(--text-primary); }
 
 .topbar-title {
   font-size: 1rem;
@@ -286,6 +320,25 @@ code { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: .85em; 
   display: flex;
   align-items: center;
   gap: 1rem;
+}
+
+.theme-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  transition: all var(--transition);
+}
+.theme-toggle svg { width: 18px; height: 18px; }
+.theme-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .status-indicator {
@@ -402,15 +455,15 @@ code { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: .85em; 
 }
 .data-table td {
   padding: .875rem 1rem;
-  border-bottom: 1px solid rgba(255,255,255,.04);
+  border-bottom: 1px solid var(--bg-input);
   vertical-align: middle;
 }
 .data-table tbody tr { transition: background var(--transition); }
-.data-table tbody tr:hover { background: rgba(255,255,255,.025); }
+.data-table tbody tr:hover { background: var(--bg-hover); }
 .data-table tbody tr:last-child td { border-bottom: none; }
 
 .cam-id {
-  background: rgba(255,255,255,.06);
+  background: var(--bg-ghost);
   padding: .15rem .4rem;
   border-radius: 6px;
   font-size: .8rem;
@@ -448,11 +501,11 @@ code { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: .85em; 
 }
 
 .btn-ghost {
-  background: rgba(255,255,255,.06);
+  background: var(--bg-ghost);
   color: var(--text-secondary);
   border: 1px solid var(--border);
 }
-.btn-ghost:hover { background: rgba(255,255,255,.1); color: var(--text-primary); }
+.btn-ghost:hover { background: var(--border-hover); color: var(--text-primary); }
 
 .btn-danger-ghost {
   background: transparent;
@@ -491,7 +544,7 @@ select,
 textarea {
   width: 100%;
   padding: .65rem .9rem;
-  background: rgba(255,255,255,.04);
+  background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text-primary);
@@ -605,7 +658,7 @@ select option { background: var(--bg-elevated); }
   height: 6px;
   width: 80px;
   border-radius: 999px;
-  background: rgba(255,255,255,.08);
+  background: var(--bg-ghost);
   position: relative;
   overflow: hidden;
 }
@@ -867,7 +920,7 @@ select option { background: var(--bg-elevated); }
    ============================================================ */
 .toggle-group {
   display: flex;
-  background: rgba(255,255,255,.04);
+  background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
