@@ -287,8 +287,8 @@ code { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: .85em; 
 .topbar {
   height: var(--topbar-height);
   position: sticky; top: 0;
-  background: rgba(6, 8, 16, 0.85);
-  backdrop-filter: blur(12px);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
