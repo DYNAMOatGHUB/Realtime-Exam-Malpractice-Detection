@@ -146,23 +146,79 @@
     opacity: 0.5; cursor: not-allowed; transform: none;
   }
 
-  /* ── Progress overlay ────────────────────────────────────── */
+  /* ── Progress bar ──────────────────────────────────────── */
   .upload-progress {
     display: none;
-    align-items: center;
-    gap: 12px;
+    flex-direction: column;
+    gap: 8px;
     margin-top: 1rem;
+    padding: 1rem 1.25rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+
+  .upload-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     font-size: 0.82rem;
     color: var(--text-secondary);
   }
 
+  .upload-progress-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
   .upload-spinner {
-    width: 18px; height: 18px;
-    border: 2px solid rgba(255,255,255,0.15);
+    width: 14px; height: 14px;
+    border: 2px solid rgba(239,68,68,0.2);
     border-top-color: #ef4444;
     border-radius: 50%;
     animation: spin 0.7s linear infinite;
     flex-shrink: 0;
+  }
+
+  .upload-track {
+    width: 100%;
+    height: 8px;
+    background: var(--bg-input);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .upload-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #ef4444, #f97316);
+    border-radius: 999px;
+    transition: width 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .upload-fill::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 50%, transparent 100%);
+    animation: shimmer 1.4s infinite;
+  }
+
+  @keyframes shimmer {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  .upload-progress-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-muted);
   }
 
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -597,19 +653,36 @@
     {% endif %}
 
     <!-- Submit row -->
-    <div style="display: flex; align-items: center; justify-content: flex-end; margin-top: 1.25rem; gap: 1rem;">
+    <div style="margin-top: 1.25rem;">
+
+      <!-- Progress bar (shown during upload) -->
       <div class="upload-progress" id="uploadProgress">
-        <div class="upload-spinner"></div>
-        <span>Uploading &amp; dispatching to AI pipeline…</span>
+        <div class="upload-progress-header">
+          <span class="upload-progress-label">
+            <div class="upload-spinner"></div>
+            Uploading to server...
+          </span>
+          <span id="uploadPct">0%</span>
+        </div>
+        <div class="upload-track">
+          <div class="upload-fill" id="uploadFill"></div>
+        </div>
+        <div class="upload-progress-meta">
+          <span id="uploadTransferred">0 MB of 0 MB</span>
+          <span id="uploadEta"></span>
+        </div>
       </div>
-      <button type="submit" class="upload-submit-btn" id="submitBtn" disabled>
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="17 8 12 3 7 8"/>
-          <line x1="12" y1="3" x2="12" y2="15"/>
-        </svg>
-        Upload &amp; Process
-      </button>
+
+      <div style="display:flex; justify-content:flex-end; margin-top:.75rem;">
+        <button type="submit" class="upload-submit-btn" id="submitBtn" disabled>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          Upload &amp; Process
+        <button>
+      </div>
     </div>
   </form>
 </div>
@@ -831,15 +904,71 @@
     }
   });
 
-  // Show spinner on submit
+  // Show XHR progress on submit
   uploadForm.addEventListener('submit', (e) => {
-    if (!fileInput.files.length) {
-      e.preventDefault();
-      return;
-    }
+    e.preventDefault(); // intercept native submit
+    if (!fileInput.files.length) return;
+
+    const formData = new FormData(uploadForm);
+    const xhr = new XMLHttpRequest();
+    const file = fileInput.files[0];
+    const totalBytes = file.size;
+    let startTime = Date.now();
+
+    // Show progress UI
     submitBtn.disabled = true;
     uploadProgress.style.display = 'flex';
+
+    const fill    = document.getElementById('uploadFill');
+    const pct     = document.getElementById('uploadPct');
+    const xferred = document.getElementById('uploadTransferred');
+    const eta     = document.getElementById('uploadEta');
+
+    function fmt(bytes) {
+      if (bytes >= 1073741824) return (bytes/1073741824).toFixed(1)+' GB';
+      if (bytes >= 1048576)    return (bytes/1048576).toFixed(1)+' MB';
+      return (bytes/1024).toFixed(0)+' KB';
+    }
+
+    xhr.upload.addEventListener('progress', (ev) => {
+      if (!ev.lengthComputable) return;
+      const percent  = Math.round((ev.loaded / ev.total) * 100);
+      const elapsed  = (Date.now() - startTime) / 1000;   // seconds
+      const speed    = ev.loaded / elapsed;               // bytes/s
+      const remaining = speed > 0 ? (ev.total - ev.loaded) / speed : 0;
+
+      fill.style.width   = percent + '%';
+      pct.textContent    = percent + '%';
+      xferred.textContent = fmt(ev.loaded) + ' of ' + fmt(ev.total);
+
+      if (remaining > 0) {
+        const mins = Math.floor(remaining / 60);
+        const secs = Math.round(remaining % 60);
+        eta.textContent = (mins > 0 ? mins + 'm ' : '') + secs + 's remaining · ' + fmt(speed) + '/s';
+      }
+    });
+
+    xhr.upload.addEventListener('load', () => {
+      fill.style.width = '100%';
+      pct.textContent  = '100%';
+      eta.textContent  = 'Upload done — dispatching to AI pipeline…';
+      xferred.textContent = fmt(totalBytes) + ' of ' + fmt(totalBytes);
+    });
+
+    xhr.addEventListener('load', () => {
+      // Server responded — redirect to the jobs page
+      window.location.href = window.location.pathname;
+    });
+
+    xhr.addEventListener('error', () => {
+      eta.textContent = '⚠ Upload failed. Please retry.';
+      submitBtn.disabled = false;
+    });
+
+    xhr.open('POST', uploadForm.action);
+    xhr.send(formData);
   });
+
   // ── Delete modal ─────────────────────────────────────────────
   function openDeleteModal(jobId, fileName) {
     document.getElementById('delFileName').textContent = fileName || jobId;
