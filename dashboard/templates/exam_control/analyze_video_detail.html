@@ -28,18 +28,29 @@
     background: #000;
     border-radius: 14px;
     overflow: hidden;
-    border: 2px solid rgba(239,68,68,.25);
-    box-shadow: 0 0 50px rgba(239,68,68,.08), 0 4px 30px rgba(0,0,0,.7);
+    border: 2px solid rgba(239, 68, 68, .25);
+    box-shadow: 0 0 50px rgba(239, 68, 68, .08), 0 4px 30px rgba(0, 0, 0, .7);
     flex: 1;
     min-height: 0;
     display: flex;
     align-items: center;
     justify-content: center;
   }
-  .video-box.flash { animation: flash .5s ease-out; }
+
+  .video-box.flash {
+    animation: flash .5s ease-out;
+  }
+
   @keyframes flash {
-    0%   { border-color: rgba(239,68,68,1); box-shadow:0 0 80px rgba(239,68,68,.55); }
-    100% { border-color: rgba(239,68,68,.25); box-shadow:0 0 50px rgba(239,68,68,.08); }
+    0% {
+      border-color: rgba(239, 68, 68, 1);
+      box-shadow: 0 0 80px rgba(239, 68, 68, .55);
+    }
+
+    100% {
+      border-color: rgba(239, 68, 68, .25);
+      box-shadow: 0 0 50px rgba(239, 68, 68, .08);
+    }
   }
 
   #videoCanvas {
@@ -52,236 +63,704 @@
 
   /* ─── Overlay badges ──────────────────────────────────────── */
   .cv-badges {
-    position: absolute; top: 10px; left: 10px;
-    display: flex; gap: 7px; align-items: center;
-    pointer-events: none; z-index: 10;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: flex;
+    gap: 7px;
+    align-items: center;
+    pointer-events: none;
+    z-index: 10;
   }
+
   .badge-live {
-    background: rgba(239,68,68,.92); color:#fff;
-    font-size:.67rem; font-weight:700; letter-spacing:.1em;
-    padding:3px 10px; border-radius:999px;
-    display:flex; align-items:center; gap:5px; backdrop-filter:blur(4px);
+    background: rgba(239, 68, 68, .92);
+    color: #fff;
+    font-size: .67rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    padding: 3px 10px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    backdrop-filter: blur(4px);
   }
-  .bdot { width:7px; height:7px; border-radius:50%; background:#fff; animation:ldot 1s infinite; }
-  @keyframes ldot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.6)} }
+
+  .bdot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #fff;
+    animation: ldot 1s infinite;
+  }
+
+  @keyframes ldot {
+
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1)
+    }
+
+    50% {
+      opacity: .35;
+      transform: scale(.6)
+    }
+  }
+
   .badge-count {
-    background:rgba(0,0,0,.75); color:#ef4444;
-    font-size:.73rem; font-weight:700; padding:3px 11px;
-    border-radius:999px; border:1px solid rgba(239,68,68,.4); backdrop-filter:blur(4px);
+    background: rgba(0, 0, 0, .75);
+    color: #ef4444;
+    font-size: .73rem;
+    font-weight: 700;
+    padding: 3px 11px;
+    border-radius: 999px;
+    border: 1px solid rgba(239, 68, 68, .4);
+    backdrop-filter: blur(4px);
   }
+
   .badge-fps {
-    background:rgba(0,0,0,.6); color:var(--text-secondary);
-    font-size:.66rem; padding:3px 9px;
-    border-radius:999px; border:1px solid var(--border); backdrop-filter:blur(4px);
+    background: rgba(0, 0, 0, .6);
+    color: var(--text-secondary);
+    font-size: .66rem;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    backdrop-filter: blur(4px);
   }
 
   /* ─── Completion banner (overlays canvas, not replacing it) ── */
   .done-banner {
-    position: absolute; bottom: 0; left: 0; right: 0;
-    background: linear-gradient(135deg, rgba(16,185,129,.92), rgba(5,150,105,.92));
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, rgba(16, 185, 129, .92), rgba(5, 150, 105, .92));
     backdrop-filter: blur(6px);
     padding: .9rem 1.4rem;
-    display: flex; align-items: center; gap: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
     animation: slideUp .4s ease-out;
     z-index: 20;
   }
-  @keyframes slideUp { from{transform:translateY(100%);opacity:0} to{transform:translateY(0);opacity:1} }
-  .done-icon { color:#fff; flex-shrink:0; }
-  .done-text { flex:1; }
-  .done-title { font-size:.95rem; font-weight:700; color:#fff; margin-bottom:2px; }
-  .done-sub   { font-size:.78rem; color:rgba(255,255,255,.75); }
+
+  @keyframes slideUp {
+    from {
+      transform: translateY(100%);
+      opacity: 0
+    }
+
+    to {
+      transform: translateY(0);
+      opacity: 1
+    }
+  }
+
+  .done-icon {
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .done-text {
+    flex: 1;
+  }
+
+  .done-title {
+    font-size: .95rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 2px;
+  }
+
+  .done-sub {
+    font-size: .78rem;
+    color: rgba(255, 255, 255, .75);
+  }
 
   /* ─── Placeholder states ──────────────────────────────────── */
   .state-box {
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    height:100%; width:100%; gap:.9rem; padding:2rem; text-align:center;
-    position:absolute; inset:0; background:#000; z-index:5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    gap: .9rem;
+    padding: 2rem;
+    text-align: center;
+    position: absolute;
+    inset: 0;
+    background: #000;
+    z-index: 5;
   }
+
   .icon-ring {
-    width:72px; height:72px; border-radius:50%; border:3px solid;
-    display:flex; align-items:center; justify-content:center;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    border: 3px solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-  .icon-ring.blue  { border-color:#3b82f6; color:#3b82f6; }
-  .icon-ring.amber { border-color:#f59e0b; color:#f59e0b; }
-  .icon-ring.red   { border-color:#ef4444; color:#ef4444; }
-  .state-title { font-size:1.05rem; font-weight:700; color:var(--text-primary); }
-  .state-sub   { font-size:.83rem; color:var(--text-muted); max-width:300px; }
+
+  .icon-ring.blue {
+    border-color: #3b82f6;
+    color: #3b82f6;
+  }
+
+  .icon-ring.amber {
+    border-color: #f59e0b;
+    color: #f59e0b;
+  }
+
+  .icon-ring.red {
+    border-color: #ef4444;
+    color: #ef4444;
+  }
+
+  .state-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .state-sub {
+    font-size: .83rem;
+    color: var(--text-muted);
+    max-width: 300px;
+  }
 
   .spinner {
-    width:50px; height:50px;
-    border:3px solid var(--border);
-    border-top-color:#ef4444;
-    border-radius:50%; animation:spin .8s linear infinite;
+    width: 50px;
+    height: 50px;
+    border: 3px solid var(--border);
+    border-top-color: #ef4444;
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
   }
-  @keyframes spin { to { transform:rotate(360deg); } }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
 
   .btn-action {
-    display:inline-flex; align-items:center; gap:7px;
-    border:none; border-radius:10px; padding:.7rem 1.6rem;
-    font-size:.88rem; font-weight:600; cursor:pointer; transition:all .2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: none;
+    border-radius: 10px;
+    padding: .7rem 1.6rem;
+    font-size: .88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
   }
-  .btn-action.red  { background:linear-gradient(135deg,#ef4444,#dc2626); color:#fff; box-shadow:0 4px 20px rgba(239,68,68,.35); }
-  .btn-action.blue { background:linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; box-shadow:0 4px 20px rgba(59,130,246,.35); }
-  .btn-action.grey { background:linear-gradient(135deg,#6b7280,#4b5563); color:#fff; }
-  .btn-action:hover { transform:translateY(-2px); filter:brightness(1.1); }
-  .btn-action:disabled { opacity:.45; cursor:not-allowed; transform:none; filter:none; }
+
+  .btn-action.red {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(239, 68, 68, .35);
+  }
+
+  .btn-action.blue {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(59, 130, 246, .35);
+  }
+
+  .btn-action.grey {
+    background: linear-gradient(135deg, #6b7280, #4b5563);
+    color: #fff;
+  }
+
+  .btn-action:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.1);
+  }
+
+  .btn-action:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+    transform: none;
+    filter: none;
+  }
 
   /* ─── Progress bar ────────────────────────────────────────── */
   .progress-wrap {
-    background:var(--bg-surface); border-radius:10px;
-    padding:.8rem 1.1rem; border:1px solid var(--border);
+    background: var(--bg-surface);
+    border-radius: 10px;
+    padding: .8rem 1.1rem;
+    border: 1px solid var(--border);
   }
-  .progress-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:.45rem; }
-  .prog-label { font-size:.78rem; color:var(--text-secondary); font-weight:500; }
-  .prog-pct   { font-size:.88rem; color:var(--text-primary); font-weight:700; }
-  .prog-track { height:5px; background:var(--bg-input); border-radius:9px; overflow:hidden; }
-  .prog-fill  {
-    height:100%; border-radius:9px;
-    background:linear-gradient(90deg,#ef4444,#f97316);
-    transition:width .3s ease; width:0%;
-    box-shadow:0 0 8px rgba(239,68,68,.5);
+
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: .45rem;
   }
-  .prog-stats { display:flex; gap:1.25rem; margin-top:.5rem; }
-  .prog-stat  { font-size:.75rem; color:var(--text-muted); }
-  .prog-stat span { color:var(--text-primary); font-weight:600; }
+
+  .prog-label {
+    font-size: .78rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  .prog-pct {
+    font-size: .88rem;
+    color: var(--text-primary);
+    font-weight: 700;
+  }
+
+  .prog-track {
+    height: 5px;
+    background: var(--bg-input);
+    border-radius: 9px;
+    overflow: hidden;
+  }
+
+  .prog-fill {
+    height: 100%;
+    border-radius: 9px;
+    background: linear-gradient(90deg, #ef4444, #f97316);
+    transition: width .3s ease;
+    width: 0%;
+    box-shadow: 0 0 8px rgba(239, 68, 68, .5);
+  }
+
+  .prog-stats {
+    display: flex;
+    gap: 1.25rem;
+    margin-top: .5rem;
+  }
+
+  .prog-stat {
+    font-size: .75rem;
+    color: var(--text-muted);
+  }
+
+  .prog-stat span {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
 
   /* ─── Evidence gallery ────────────────────────────────────── */
   .evidence-wrap {
-    background:var(--bg-surface);
-    border:1px solid rgba(239,68,68,.2);
-    border-radius:10px;
-    padding:.8rem 1rem;
-    display:none;
-    flex-direction:column;
-    gap:.6rem;
+    background: var(--bg-surface);
+    border: 1px solid rgba(239, 68, 68, .2);
+    border-radius: 10px;
+    padding: .8rem 1rem;
+    display: none;
+    flex-direction: column;
+    gap: .6rem;
   }
-  .evidence-wrap.visible { display:flex; }
+
+  .evidence-wrap.visible {
+    display: flex;
+  }
+
   .ev-title {
-    font-size:.75rem; text-transform:uppercase; letter-spacing:.09em;
-    color:#ef4444; font-weight:700;
-    display:flex; align-items:center; gap:7px;
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    color: #ef4444;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 7px;
   }
+
   .ev-gallery {
-    display:flex; gap:.7rem; overflow-x:auto; padding-bottom:.3rem;
-    scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.1) transparent;
+    display: flex;
+    gap: .7rem;
+    overflow-x: auto;
+    padding-bottom: .3rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, .1) transparent;
   }
+
   .ev-card {
-    flex-shrink:0; width:200px; border-radius:9px; overflow:hidden;
-    border:2px solid rgba(239,68,68,.5); cursor:pointer;
-    transition:all .2s; background:var(--bg-base);
+    flex-shrink: 0;
+    width: 200px;
+    border-radius: 9px;
+    overflow: hidden;
+    border: 2px solid rgba(239, 68, 68, .5);
+    cursor: pointer;
+    transition: all .2s;
+    background: var(--bg-base);
   }
-  .ev-card:hover { border-color:#ef4444; transform:scale(1.03); box-shadow:0 4px 20px rgba(239,68,68,.3); }
-  .ev-card img   { width:100%; height:112px; object-fit:cover; display:block; }
-  .ev-card-meta  { padding:.45rem .6rem; }
-  .ev-class { font-size:.7rem; font-weight:700; color:#f87171; text-transform:uppercase; }
-  .ev-ts    { font-size:.67rem; color:var(--text-muted); margin-top:1px; }
-  .ev-conf  { font-size:.67rem; color:var(--text-secondary); }
+
+  .ev-card:hover {
+    border-color: #ef4444;
+    transform: scale(1.03);
+    box-shadow: 0 4px 20px rgba(239, 68, 68, .3);
+  }
+
+  .ev-card img {
+    width: 100%;
+    height: 112px;
+    object-fit: cover;
+    display: block;
+  }
+
+  .ev-card-meta {
+    padding: .45rem .6rem;
+  }
+
+  .ev-class {
+    font-size: .7rem;
+    font-weight: 700;
+    color: #f87171;
+    text-transform: uppercase;
+  }
+
+  .ev-ts {
+    font-size: .67rem;
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+
+  .ev-conf {
+    font-size: .67rem;
+    color: var(--text-secondary);
+  }
 
   /* ─── Modal for full evidence frame ──────────────────────── */
   .ev-modal {
-    display:none; position:fixed; inset:0;
-    background:rgba(0,0,0,.85); z-index:1000;
-    align-items:center; justify-content:center;
-    backdrop-filter:blur(4px);
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .85);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
   }
-  .ev-modal.open { display:flex; animation:fadeIn .2s; }
-  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+  .ev-modal.open {
+    display: flex;
+    animation: fadeIn .2s;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0
+    }
+
+    to {
+      opacity: 1
+    }
+  }
+
   .ev-modal-box {
-    position:relative; max-width:900px; width:95%;
-    background:var(--bg-elevated); border-radius:14px; overflow:hidden;
-    border:2px solid rgba(239,68,68,.4);
-    box-shadow:0 20px 80px rgba(0,0,0,.8);
+    position: relative;
+    max-width: 900px;
+    width: 95%;
+    background: var(--bg-elevated);
+    border-radius: 14px;
+    overflow: hidden;
+    border: 2px solid rgba(239, 68, 68, .4);
+    box-shadow: 0 20px 80px rgba(0, 0, 0, .8);
   }
-  .ev-modal-img { width:100%; display:block; }
+
+  .ev-modal-img {
+    width: 100%;
+    display: block;
+  }
+
   .ev-modal-bar {
-    padding:1rem 1.25rem;
-    background:var(--bg-surface);
-    display:flex; align-items:center; gap:1rem;
+    padding: 1rem 1.25rem;
+    background: var(--bg-surface);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
   }
+
   .ev-modal-close {
-    position:absolute; top:12px; right:12px;
-    background:rgba(0,0,0,.6); border:none; border-radius:50%;
-    width:32px; height:32px; cursor:pointer; color:#fff;
-    display:flex; align-items:center; justify-content:center;
-    font-size:1.1rem; transition:background .2s;
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(0, 0, 0, .6);
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    transition: background .2s;
   }
-  .ev-modal-close:hover { background:rgba(239,68,68,.7); }
-  .ev-modal-title { font-size:.92rem; font-weight:700; color:#ef4444; }
-  .ev-modal-meta  { font-size:.8rem; color:var(--text-secondary); margin-top:2px; }
+
+  .ev-modal-close:hover {
+    background: rgba(239, 68, 68, .7);
+  }
+
+  .ev-modal-title {
+    font-size: .92rem;
+    font-weight: 700;
+    color: #ef4444;
+  }
+
+  .ev-modal-meta {
+    font-size: .8rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
 
   /* ─── Right column ────────────────────────────────────────── */
   .right-col {
-    display:flex; flex-direction:column; gap:.85rem; overflow:hidden;
+    display: flex;
+    flex-direction: column;
+    gap: .85rem;
+    overflow: hidden;
   }
 
-  .stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:.6rem; }
-  .stat-card {
-    background:var(--bg-surface); border:1px solid var(--border);
-    border-radius:12px; padding:.85rem; text-align:center; transition:all .2s;
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .6rem;
   }
-  .stat-card.alert { border-color:rgba(239,68,68,.3); }
-  .stat-card.alert .stat-val { color:#ef4444; }
-  .stat-val { font-size:1.9rem; font-weight:800; color:var(--text-primary); line-height:1; margin-bottom:3px; transition:all .2s; }
-  .stat-lbl { font-size:.66rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.07em; font-weight:600; }
+
+  .stat-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: .85rem;
+    text-align: center;
+    transition: all .2s;
+  }
+
+  .stat-card.alert {
+    border-color: rgba(239, 68, 68, .3);
+  }
+
+  .stat-card.alert .stat-val {
+    color: #ef4444;
+  }
+
+  .stat-val {
+    font-size: 1.9rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1;
+    margin-bottom: 3px;
+    transition: all .2s;
+  }
+
+  .stat-lbl {
+    font-size: .66rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    font-weight: 600;
+  }
 
   .panel {
-    background:var(--bg-surface); border:1px solid var(--border);
-    border-radius:12px; padding:.85rem;
-    display:flex; flex-direction:column; min-height:0;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: .85rem;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
   }
+
   .panel-title {
-    font-size:.75rem; text-transform:uppercase; letter-spacing:.09em;
-    color:var(--text-muted); font-weight:700; margin-bottom:.6rem;
-    display:flex; align-items:center; gap:7px;
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-bottom: .6rem;
+    display: flex;
+    align-items: center;
+    gap: 7px;
   }
-  .pdot { width:6px; height:6px; border-radius:50%; background:#ef4444; }
 
-  .type-row   { display:flex; align-items:center; gap:8px; font-size:.72rem; margin-bottom:5px; }
-  .type-name  { color:var(--text-secondary); width:115px; flex-shrink:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-  .type-track { flex:1; height:5px; background:var(--bg-input); border-radius:9px; overflow:hidden; }
-  .type-fill  { height:100%; border-radius:9px; background:linear-gradient(90deg,#ef4444,#f97316); transition:width .5s; }
-  .type-cnt   { color:var(--text-primary); font-weight:600; min-width:22px; text-align:right; font-size:.71rem; }
+  .pdot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ef4444;
+  }
 
-  .anom-list  {
-    flex:1; overflow-y:auto; display:flex; flex-direction:column-reverse; gap:5px;
-    scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.1) transparent;
+  .type-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: .72rem;
+    margin-bottom: 5px;
   }
-  .anom-item  {
-    background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.2);
-    border-radius:8px; padding:.5rem .7rem; font-size:.74rem;
-    animation:slideIn .25s ease-out; flex-shrink:0;
+
+  .type-name {
+    color: var(--text-secondary);
+    width: 115px;
+    flex-shrink: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
-  @keyframes slideIn { from{opacity:0;transform:translateX(14px)} to{opacity:1;transform:translateX(0)} }
-  .anom-head  { display:flex; justify-content:space-between; margin-bottom:2px; }
-  .anom-cls   { color:#f87171; font-weight:700; }
-  .anom-ts    { color:#475569; font-size:.68rem; }
-  .anom-meta  { color:#94a3b8; }
-  .no-evt     { text-align:center; color:#334155; padding:1.5rem; font-size:.81rem; }
+
+  .type-track {
+    flex: 1;
+    height: 5px;
+    background: var(--bg-input);
+    border-radius: 9px;
+    overflow: hidden;
+  }
+
+  .type-fill {
+    height: 100%;
+    border-radius: 9px;
+    background: linear-gradient(90deg, #ef4444, #f97316);
+    transition: width .5s;
+  }
+
+  .type-cnt {
+    color: var(--text-primary);
+    font-weight: 600;
+    min-width: 22px;
+    text-align: right;
+    font-size: .71rem;
+  }
+
+  .anom-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 5px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, .1) transparent;
+  }
+
+  .anom-item {
+    background: rgba(239, 68, 68, .08);
+    border: 1px solid rgba(239, 68, 68, .2);
+    border-radius: 8px;
+    padding: .5rem .7rem;
+    font-size: .74rem;
+    animation: slideIn .25s ease-out;
+    flex-shrink: 0;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateX(14px)
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(0)
+    }
+  }
+
+  .anom-head {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2px;
+  }
+
+  .anom-cls {
+    color: #f87171;
+    font-weight: 700;
+  }
+
+  .anom-ts {
+    color: #475569;
+    font-size: .68rem;
+  }
+
+  .anom-meta {
+    color: #94a3b8;
+  }
+
+  .no-evt {
+    text-align: center;
+    color: #334155;
+    padding: 1.5rem;
+    font-size: .81rem;
+  }
 
   /* ─── Top bar ─────────────────────────────────────────────── */
-  .back-row { display:flex; align-items:center; gap:.8rem; margin-bottom:.85rem; }
-  .btn-back {
-    display:inline-flex; align-items:center; gap:5px;
-    color:#64748b; font-size:.82rem; text-decoration:none;
-    background:none; border:none; cursor:pointer; padding:0; transition:color .2s;
+  .back-row {
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    margin-bottom: .85rem;
   }
-  .btn-back:hover { color:#e2e8f0; }
-  .job-meta { color:#475569; font-size:.79rem; }
-  .job-meta strong { color:#94a3b8; }
+
+  .btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: #64748b;
+    font-size: .82rem;
+    text-decoration: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: color .2s;
+  }
+
+  .btn-back:hover {
+    color: #e2e8f0;
+  }
+
+  .job-meta {
+    color: #475569;
+    font-size: .79rem;
+  }
+
+  .job-meta strong {
+    color: #94a3b8;
+  }
 
   /* Scanning pulsing bar */
   .scan-bar {
-    display:none; background:rgba(245,158,11,.12);
-    border:1px solid rgba(245,158,11,.3);
-    border-radius:8px; padding:.55rem 1rem;
-    font-size:.78rem; color:#f59e0b;
-    align-items:center; gap:.6rem;
+    display: none;
+    background: rgba(245, 158, 11, .12);
+    border: 1px solid rgba(245, 158, 11, .3);
+    border-radius: 8px;
+    padding: .55rem 1rem;
+    font-size: .78rem;
+    color: #f59e0b;
+    align-items: center;
+    gap: .6rem;
   }
-  .scan-bar.visible { display:flex; animation:scanPulse 1.5s infinite; }
-  @keyframes scanPulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+
+  .scan-bar.visible {
+    display: flex;
+    animation: scanPulse 1.5s infinite;
+  }
+
+  @keyframes scanPulse {
+
+    0%,
+    100% {
+      opacity: 1
+    }
+
+    50% {
+      opacity: .6
+    }
+  }
 
   @media (max-width:1050px) {
-    .analysis-wrap { grid-template-columns:1fr; height:auto; }
+    .analysis-wrap {
+      grid-template-columns: 1fr;
+      height: auto;
+    }
   }
 </style>
 {% endblock %}
@@ -290,13 +769,17 @@
 <!-- Top bar -->
 <div class="back-row">
   <a href="{% url 'exam_control:analyze_video' %}" class="btn-back">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M19 12H5M12 5l-7 7 7 7" />
+    </svg>
     Back to Jobs
   </a>
   <span class="job-meta">
     Job <strong>{{ job.id|stringformat:"s"|slice:":8" }}…</strong> &nbsp;·&nbsp;
     <strong>{{ job.video_file.name|slice:"13:" }}</strong> &nbsp;·&nbsp;
-    Status: <strong style="color:{% if job.status == 'completed' %}#22c55e{% elif job.status == 'failed' %}#ef4444{% else %}#f59e0b{% endif %}">{{ job.get_status_display }}</strong>
+    Status: <strong
+      style="color:{% if job.status == 'completed' %}#22c55e{% elif job.status == 'failed' %}#ef4444{% else %}#f59e0b{% endif %}">{{
+      job.get_status_display }}</strong>
   </span>
 </div>
 
@@ -307,7 +790,10 @@
 
     <!-- Scanning status bar -->
     <div class="scan-bar" id="scanBar">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.35-4.35" />
+      </svg>
       <span id="scanMsg">Analysing footage for anomalies…</span>
     </div>
 
@@ -317,12 +803,18 @@
       <!-- Idle -->
       <div class="state-box" id="stIdle">
         <div class="icon-ring blue">
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="5 3 19 12 5 21 5 3" />
+          </svg>
         </div>
         <div class="state-title">Ready to Analyse</div>
-        <div class="state-sub">Stream your uploaded video with real-time anomaly detection and red bounding box annotations.</div>
+        <div class="state-sub">Stream your uploaded video with real-time anomaly detection and red bounding box
+          annotations.</div>
         <button class="btn-action red" id="btnStart" onclick="startAnalysis()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <polygon points="10 8 16 12 10 16 10 8" />
+          </svg>
           Start Live Analysis
         </button>
       </div>
@@ -337,7 +829,11 @@
       <!-- Error -->
       <div class="state-box" id="stErr" style="display:none">
         <div class="icon-ring red">
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="15" y1="9" x2="9" y2="15" />
+            <line x1="9" y1="9" x2="15" y2="15" />
+          </svg>
         </div>
         <div class="state-title">Stream Error</div>
         <div class="state-sub" id="errMsg">Could not connect to the analysis backend.</div>
@@ -349,25 +845,34 @@
 
       <!-- Badges on canvas -->
       <div class="cv-badges" id="cvBadges" style="display:none;">
-        <div class="badge-live"><div class="bdot"></div>ANALYSING</div>
+        <div class="badge-live">
+          <div class="bdot"></div>ANALYSING
+        </div>
         <div class="badge-count" id="bdgAnom">0 anomalies</div>
-        <div class="badge-fps"   id="bdgFps">— fps</div>
+        <div class="badge-fps" id="bdgFps">— fps</div>
       </div>
 
       <!-- Completion overlay (stays on top of canvas, doesn't replace it) -->
       <div class="done-banner" id="doneBanner" style="display:none;">
         <div class="done-icon">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+          </svg>
         </div>
         <div class="done-text">
           <div class="done-title" id="doneTitle">Analysis Complete</div>
-          <div class="done-sub"   id="doneSub">Video fully processed.</div>
+          <div class="done-sub" id="doneSub">Video fully processed.</div>
         </div>
         <button class="btn-action blue" onclick="restart()" style="flex-shrink:0;padding:.5rem 1rem;font-size:.8rem;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="1 4 1 10 7 10" />
+            <path d="M3.51 15a9 9 0 1 0 .49-3.5" />
+          </svg>
           Replay
         </button>
-        <a href="{% url 'exam_control:analyze_video' %}" class="btn-action grey" style="flex-shrink:0;padding:.5rem 1rem;font-size:.8rem;text-decoration:none;">
+        <a href="{% url 'exam_control:analyze_video' %}" class="btn-action grey"
+          style="flex-shrink:0;padding:.5rem 1rem;font-size:.8rem;text-decoration:none;">
           Return to Dashboard
         </a>
       </div>
@@ -377,9 +882,14 @@
     <!-- Evidence gallery (shown when anomaly evidence frames arrive) -->
     <div class="evidence-wrap" id="evidenceWrap">
       <div class="ev-title">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="17 8 12 3 7 8" />
+          <line x1="12" y1="3" x2="12" y2="15" />
+        </svg>
         Evidence Captures
-        <span style="margin-left:auto;color:#64748b;font-size:.68rem;text-transform:none;letter-spacing:0" id="evCount">0 captures</span>
+        <span style="margin-left:auto;color:#64748b;font-size:.68rem;text-transform:none;letter-spacing:0"
+          id="evCount">0 captures</span>
       </div>
       <div class="ev-gallery" id="evGallery"></div>
     </div>
@@ -390,7 +900,9 @@
         <span class="prog-label">Analysis Progress</span>
         <span class="prog-pct" id="prgPct">0%</span>
       </div>
-      <div class="prog-track"><div class="prog-fill" id="prgFill"></div></div>
+      <div class="prog-track">
+        <div class="prog-fill" id="prgFill"></div>
+      </div>
       <div class="prog-stats">
         <div class="prog-stat">Frame: <span id="pFrame">—</span></div>
         <div class="prog-stat">Total: <span id="pTotal">—</span></div>
@@ -405,15 +917,29 @@
 
     <!-- Stats -->
     <div class="stats-grid">
-      <div class="stat-card alert"><div class="stat-val" id="sAnom">0</div><div class="stat-lbl">Anomalies</div></div>
-      <div class="stat-card"><div class="stat-val" id="sPersons">0</div><div class="stat-lbl">Persons</div></div>
-      <div class="stat-card"><div class="stat-val" id="sFrames">0</div><div class="stat-lbl">Frames</div></div>
-      <div class="stat-card"><div class="stat-val" id="sRate">—</div><div class="stat-lbl">Anomaly/min</div></div>
+      <div class="stat-card alert">
+        <div class="stat-val" id="sAnom">0</div>
+        <div class="stat-lbl">Anomalies</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="sPersons">0</div>
+        <div class="stat-lbl">Persons</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="sFrames">0</div>
+        <div class="stat-lbl">Frames</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="sRate">—</div>
+        <div class="stat-lbl">Anomaly/min</div>
+      </div>
     </div>
 
     <!-- Detection types -->
     <div class="panel" style="flex:0">
-      <div class="panel-title"><div class="pdot"></div>Detection Types</div>
+      <div class="panel-title">
+        <div class="pdot"></div>Detection Types
+      </div>
       <div id="typeBreakdown">
         <div class="no-evt" style="padding:.5rem 0">No detections yet</div>
       </div>
@@ -442,7 +968,7 @@
     <div class="ev-modal-bar">
       <div>
         <div class="ev-modal-title" id="evModalTitle">—</div>
-        <div class="ev-modal-meta"  id="evModalMeta">—</div>
+        <div class="ev-modal-meta" id="evModalMeta">—</div>
       </div>
     </div>
   </div>
@@ -451,11 +977,11 @@
 
 {% block extra_js %}
 <script>
-  const JOB_ID     = "{{ job.id }}";
+  const JOB_ID = "{{ job.id }}";
   const STREAM_URL = "{% url 'exam_control:video_stream_proxy' job.id %}";
 
   // State
-  let evtSrc   = null;
+  let evtSrc = null;
   let cvs = null, ctx = null;
   let videoFps = 25, videoDuration = 0, totalFrames = 0;
   let anomCount = 0, frameCount = 0, personIds = new Set();
@@ -473,35 +999,35 @@
     cvs = document.getElementById('videoCanvas');
     ctx = cvs.getContext('2d');
     // Set initial canvas size (will be updated on meta)
-    cvs.width  = 1280;
+    cvs.width = 1280;
     cvs.height = 720;
-    startTime  = Date.now();
+    startTime = Date.now();
     firstFrame = false;
     streamingStarted = false;
     fpsFrameCount = 0;
-    fpsTimestamp  = Date.now();
+    fpsTimestamp = Date.now();
 
     evtSrc = new EventSource(STREAM_URL);
     evtSrc.onmessage = onMessage;
-    evtSrc.onerror   = onError;
+    evtSrc.onerror = onError;
   }
 
   function onMessage(evt) {
     let d;
-    try { d = JSON.parse(evt.data); } catch(e) { return; }
+    try { d = JSON.parse(evt.data); } catch (e) { return; }
 
     // ── Metadata ────────────────────────────────────────────────
     if (d.type === 'meta') {
-      totalFrames    = d.total_frames || 0;
-      videoFps       = d.fps || 25;
-      videoDuration  = d.duration || 0;
-      cvs.width      = d.width  || 1280;
-      cvs.height     = d.height || 720;
+      totalFrames = d.total_frames || 0;
+      videoFps = d.fps || 25;
+      videoDuration = d.duration || 0;
+      cvs.width = d.width || 1280;
+      cvs.height = d.height || 720;
       document.getElementById('pTotal').textContent = totalFrames;
-      document.getElementById('pFps').textContent   = videoFps.toFixed(1);
-      document.getElementById('pDur').textContent   = fmtDur(videoDuration);
+      document.getElementById('pFps').textContent = videoFps.toFixed(1);
+      document.getElementById('pDur').textContent = fmtDur(videoDuration);
 
-    // ── Scanning ─────────────────────────────────────────────────
+      // ── Scanning ─────────────────────────────────────────────────
     } else if (d.type === 'scanning') {
       document.getElementById('scanBar').classList.add('visible');
       document.getElementById('scanMsg').textContent = d.message || 'Scanning…';
@@ -511,10 +1037,10 @@
       document.getElementById('scanMsg').textContent =
         ct === 0
           ? '✓ No significant scene changes detected'
-          : `✓ Found ${ct} potential anomaly moment${ct===1?'':'s'}`;
+          : `✓ Found ${ct} potential anomaly moment${ct === 1 ? '' : 's'}`;
       setTimeout(() => document.getElementById('scanBar').classList.remove('visible'), 3000);
 
-    // ── Frame ─────────────────────────────────────────────────────
+      // ── Frame ─────────────────────────────────────────────────────
     } else if (d.type === 'frame') {
       // Switch state on very first frame
       if (!firstFrame) {
@@ -523,7 +1049,7 @@
       }
 
       frameCount = d.frame;
-      anomCount  = d.anomalies;
+      anomCount = d.anomalies;
       const prog = d.progress || 0;
       const mime = d.mime_type || 'image/jpeg';
 
@@ -537,10 +1063,10 @@
 
       // Progress
       document.getElementById('prgFill').style.width = prog + '%';
-      document.getElementById('prgPct').textContent  = prog.toFixed(1) + '%';
-      document.getElementById('pFrame').textContent  = frameCount;
+      document.getElementById('prgPct').textContent = prog.toFixed(1) + '%';
+      document.getElementById('pFrame').textContent = frameCount;
       document.getElementById('sFrames').textContent = frameCount;
-      document.getElementById('sAnom').textContent   = anomCount;
+      document.getElementById('sAnom').textContent = anomCount;
       document.getElementById('bdgAnom').textContent =
         anomCount + ' anomal' + (anomCount === 1 ? 'y' : 'ies');
 
@@ -550,7 +1076,7 @@
         const now = Date.now();
         const fps = Math.round(fpsFrameCount / ((now - fpsTimestamp) / 1000));
         document.getElementById('bdgFps').textContent = fps + ' fps';
-        fpsTimestamp  = now;
+        fpsTimestamp = now;
         fpsFrameCount = 0;
       }
 
@@ -571,10 +1097,10 @@
           if (det.track_id) personIds.add(det.track_id);
           typeCounts[det.class] = (typeCounts[det.class] || 0) + 1;
           logEntries.unshift({
-            ts:   d.frame / videoFps,
-            cls:  det.class,
+            ts: d.frame / videoFps,
+            cls: det.class,
             conf: det.confidence,
-            tid:  det.track_id,
+            tid: det.track_id,
           });
           if (logEntries.length > MAX_LOG) logEntries.pop();
         });
@@ -584,31 +1110,31 @@
         updateLog();
       }
 
-    // ── Evidence frame ───────────────────────────────────────────
+      // ── Evidence frame ───────────────────────────────────────────
     } else if (d.type === 'evidence') {
       addEvidence(d);
 
-    // ── Complete ─────────────────────────────────────────────────
+      // ── Complete ─────────────────────────────────────────────────
     } else if (d.type === 'complete') {
       evtSrc.close();
       document.getElementById('prgFill').style.width = '100%';
-      document.getElementById('prgPct').textContent  = '100%';
+      document.getElementById('prgPct').textContent = '100%';
       document.getElementById('doneTitle').textContent =
-        `Analysis Complete — ${d.total_anomalies} Anomal${d.total_anomalies===1?'y':'ies'} Detected`;
+        `Analysis Complete — ${d.total_anomalies} Anomal${d.total_anomalies === 1 ? 'y' : 'ies'} Detected`;
       document.getElementById('doneSub').textContent =
         `Processed ${d.total_frames} frames · ${d.anomaly_log ? d.anomaly_log.length : 0} events logged`;
       document.getElementById('doneBanner').style.display = 'flex';
-      document.getElementById('cvBadges').style.display   = 'none';
+      document.getElementById('cvBadges').style.display = 'none';
 
       // Final state updates
       document.getElementById('sAnom').textContent = d.total_anomalies || 0;
       if (d.anomaly_log) {
         d.anomaly_log.forEach(entry => {
           logEntries.push({
-            ts:   entry.timestamp,
-            cls:  entry.class,
+            ts: entry.timestamp,
+            cls: entry.class,
             conf: entry.confidence,
-            tid:  entry.track_id || 1,
+            tid: entry.track_id || 1,
           });
           typeCounts[entry.class] = (typeCounts[entry.class] || 0) + 1;
         });
@@ -616,7 +1142,7 @@
         updateLog();
       }
 
-    // ── Error ────────────────────────────────────────────────────
+      // ── Error ────────────────────────────────────────────────────
     } else if (d.type === 'error') {
       evtSrc.close();
       document.getElementById('errMsg').textContent = d.message || 'Unknown error';
@@ -636,23 +1162,23 @@
 
   // ── Show canvas (never hide it again after first frame) ────────
   function showCanvas() {
-    ['stIdle','stLoad','stErr'].forEach(id => {
+    ['stIdle', 'stLoad', 'stErr'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = 'none';
     });
     document.getElementById('videoCanvas').style.display = 'block';
-    document.getElementById('cvBadges').style.display    = 'flex';
+    document.getElementById('cvBadges').style.display = 'flex';
   }
 
   function showState(s) {
-    ['stIdle','stLoad','stErr'].forEach(id => {
+    ['stIdle', 'stLoad', 'stErr'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = 'none';
     });
     document.getElementById('videoCanvas').style.display = 'none';
-    document.getElementById('cvBadges').style.display    = 'none';
-    document.getElementById('doneBanner').style.display  = 'none';
-    const map = { idle:'stIdle', load:'stLoad', error:'stErr' };
+    document.getElementById('cvBadges').style.display = 'none';
+    document.getElementById('doneBanner').style.display = 'none';
+    const map = { idle: 'stIdle', load: 'stLoad', error: 'stErr' };
     if (map[s]) document.getElementById(map[s]).style.display = 'flex';
   }
 
@@ -661,18 +1187,18 @@
     evidenceItems.push(d);
     const wrap = document.getElementById('evidenceWrap');
     wrap.classList.add('visible');
-    document.getElementById('evCount').textContent = evidenceItems.length + ' capture' + (evidenceItems.length===1?'':'s');
+    document.getElementById('evCount').textContent = evidenceItems.length + ' capture' + (evidenceItems.length === 1 ? '' : 's');
 
     const idx = evidenceItems.length - 1;
     const card = document.createElement('div');
     card.className = 'ev-card';
-    card.onclick   = () => openModal(idx);
+    card.onclick = () => openModal(idx);
     card.innerHTML = `
-      <img src="data:${d.mime_type||'image/jpeg'};base64,${d.image}" alt="Evidence @ ${fmtDur(d.timestamp)}">
+      <img src="data:${d.mime_type || 'image/jpeg'};base64,${d.image}" alt="Evidence @ ${fmtDur(d.timestamp)}">
       <div class="ev-card-meta">
-        <div class="ev-class">${(d.class||'UNKNOWN').replace(/_/g,' ')}</div>
+        <div class="ev-class">${(d.class || 'UNKNOWN').replace(/_/g, ' ')}</div>
         <div class="ev-ts">T = ${fmtDur(d.timestamp)} &nbsp;·&nbsp; Frame ${Math.round(d.timestamp * videoFps)}</div>
-        <div class="ev-conf">${((d.confidence||0)*100).toFixed(0)}% confidence</div>
+        <div class="ev-conf">${((d.confidence || 0) * 100).toFixed(0)}% confidence</div>
       </div>`;
     document.getElementById('evGallery').appendChild(card);
     // Auto-scroll gallery to latest
@@ -681,10 +1207,10 @@
 
   function openModal(idx) {
     const d = evidenceItems[idx];
-    document.getElementById('evModalImg').src    = `data:${d.mime_type||'image/jpeg'};base64,${d.image}`;
-    document.getElementById('evModalTitle').textContent = (d.class||'UNKNOWN').replace(/_/g,' ');
-    document.getElementById('evModalMeta').textContent  =
-      `Timestamp: ${fmtDur(d.timestamp)} · Confidence: ${((d.confidence||0)*100).toFixed(0)}%`;
+    document.getElementById('evModalImg').src = `data:${d.mime_type || 'image/jpeg'};base64,${d.image}`;
+    document.getElementById('evModalTitle').textContent = (d.class || 'UNKNOWN').replace(/_/g, ' ');
+    document.getElementById('evModalMeta').textContent =
+      `Timestamp: ${fmtDur(d.timestamp)} · Confidence: ${((d.confidence || 0) * 100).toFixed(0)}%`;
     document.getElementById('evModal').classList.add('open');
   }
 
@@ -699,16 +1225,16 @@
     if (evtSrc) evtSrc.close();
     anomCount = 0; frameCount = 0; startTime = null; firstFrame = false;
     personIds = new Set(); typeCounts = {}; logEntries = []; evidenceItems = [];
-    ['sAnom','sPersons','sFrames'].forEach(id => document.getElementById(id).textContent = '0');
-    document.getElementById('sRate').textContent    = '—';
-    document.getElementById('prgFill').style.width  = '0%';
-    document.getElementById('prgPct').textContent   = '0%';
-    document.getElementById('pFrame').textContent   = '—';
-    document.getElementById('logCnt').textContent   = '0 events';
-    document.getElementById('anomList').innerHTML   = '<div class="no-evt">No anomalies detected yet…</div>';
+    ['sAnom', 'sPersons', 'sFrames'].forEach(id => document.getElementById(id).textContent = '0');
+    document.getElementById('sRate').textContent = '—';
+    document.getElementById('prgFill').style.width = '0%';
+    document.getElementById('prgPct').textContent = '0%';
+    document.getElementById('pFrame').textContent = '—';
+    document.getElementById('logCnt').textContent = '0 events';
+    document.getElementById('anomList').innerHTML = '<div class="no-evt">No anomalies detected yet…</div>';
     document.getElementById('typeBreakdown').innerHTML = '<div class="no-evt" style="padding:.5rem 0">No detections yet</div>';
-    document.getElementById('evGallery').innerHTML  = '';
-    document.getElementById('evCount').textContent  = '0 captures';
+    document.getElementById('evGallery').innerHTML = '';
+    document.getElementById('evCount').textContent = '0 captures';
     document.getElementById('evidenceWrap').classList.remove('visible');
     document.getElementById('doneBanner').style.display = 'none';
     document.getElementById('scanBar').classList.remove('visible');
@@ -718,13 +1244,13 @@
 
   // ── Helpers ─────────────────────────────────────────────────
   function updateTypes() {
-    const total = Object.values(typeCounts).reduce((a,b)=>a+b,0);
+    const total = Object.values(typeCounts).reduce((a, b) => a + b, 0);
     if (!total) return;
-    const sorted = Object.entries(typeCounts).sort((a,b)=>b[1]-a[1]);
-    document.getElementById('typeBreakdown').innerHTML = sorted.map(([cls,cnt]) => {
-      const pct = Math.round((cnt/total)*100);
+    const sorted = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
+    document.getElementById('typeBreakdown').innerHTML = sorted.map(([cls, cnt]) => {
+      const pct = Math.round((cnt / total) * 100);
       return `<div class="type-row">
-        <span class="type-name">${cls.replace(/_/g,' ')}</span>
+        <span class="type-name">${cls.replace(/_/g, ' ')}</span>
         <div class="type-track"><div class="type-fill" style="width:${pct}%"></div></div>
         <span class="type-cnt">${cnt}</span>
       </div>`;
@@ -733,14 +1259,14 @@
 
   function updateLog() {
     document.getElementById('logCnt').textContent =
-      logEntries.length + ' event' + (logEntries.length===1?'':'s');
-    document.getElementById('anomList').innerHTML = logEntries.slice(0,50).map(e => `
+      logEntries.length + ' event' + (logEntries.length === 1 ? '' : 's');
+    document.getElementById('anomList').innerHTML = logEntries.slice(0, 50).map(e => `
       <div class="anom-item">
         <div class="anom-head">
-          <span class="anom-cls">${e.cls.replace(/_/g,' ')}</span>
+          <span class="anom-cls">${e.cls.replace(/_/g, ' ')}</span>
           <span class="anom-ts">T=${fmtDur(e.ts)}</span>
         </div>
-        <span class="anom-meta">Track #${e.tid||1} &nbsp;·&nbsp; ${((e.conf||0)*100).toFixed(0)}% confidence</span>
+        <span class="anom-meta">Track #${e.tid || 1} &nbsp;·&nbsp; ${((e.conf || 0) * 100).toFixed(0)}% confidence</span>
       </div>`).join('') || '<div class="no-evt">No anomalies detected yet…</div>';
   }
 
@@ -748,7 +1274,7 @@
     secs = parseFloat(secs) || 0;
     const m = Math.floor(secs / 60);
     const s = Math.floor(secs % 60);
-    return `${m}:${String(s).padStart(2,'0')}`;
+    return `${m}:${String(s).padStart(2, '0')}`;
   }
 
   // Auto-start if job is already processing/pending
