@@ -149,10 +149,14 @@ services:
       - static_files:/app/staticfiles
     ports:
       - "8001:8001"
+    deploy:
+      resources:
+        limits:
+          memory: 2g        # cap at 2GB — prevents OOM kill from crashing the whole container
     command: >
       sh -c "python manage.py migrate &&
              python manage.py collectstatic --noinput &&
-             daphne -b 0.0.0.0 -p 8001 core.asgi:application"
+             daphne -b 0.0.0.0 -p 8001 -t 600 --proxy-headers core.asgi:application"
 
   # ─── Nginx Reverse Proxy ──────────────────────────────────────
   nginx:

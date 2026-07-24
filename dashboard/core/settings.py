@@ -115,6 +115,18 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# ── Large File Uploads ────────────────────────────────────────
+# Files above 10MB are written to a temp file on disk instead of RAM.
+# This prevents OOM Kills when uploading large exam videos (1GB+).
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024         # 10 MB in-memory threshold
+DATA_UPLOAD_MAX_MEMORY_SIZE  = 10 * 1024 * 1024         # 10 MB POST data limit
+FILE_UPLOAD_TEMP_DIR         = None                     # Use system temp dir
+FILE_UPLOAD_PERMISSIONS      = 0o644
+# Use the temporary file upload handler (streams directly to disk)
+FILE_UPLOAD_HANDLERS = [
+    "django.core.files.uploadhandler.TemporaryFileUploadHandler",
+]
+
 # ── Internationalisation ──────────────────────────────────────
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
