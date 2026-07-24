@@ -156,7 +156,7 @@ services:
     command: >
       sh -c "python manage.py migrate &&
              python manage.py collectstatic --noinput &&
-             daphne -b 0.0.0.0 -p 8001 -t 600 --proxy-headers core.asgi:application"
+             uvicorn core.asgi:application --host 0.0.0.0 --port 8001 --proxy-headers --timeout-keep-alive 600 --workers 2"
 
   # ─── Nginx Reverse Proxy ──────────────────────────────────────
   nginx:
