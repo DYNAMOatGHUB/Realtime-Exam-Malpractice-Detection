@@ -163,14 +163,18 @@ def upload_video(request):
     from django.http import JsonResponse
     import threading
 
+    logger.info("Upload video view invoked.")
     form = VideoAnalysisJobForm(request.POST, request.FILES)
     if not form.is_valid():
         errors = {field: errs.as_text() for field, errs in form.errors.items()}
+        logger.error("Upload form invalid: %s", errors)
         return JsonResponse({"success": False, "errors": errors}, status=400)
 
+    logger.info("Form is valid. Saving job to DB...")
     job = form.save(commit=False)
     job.status = "processing"
     job.save()
+    logger.info("Job %s saved. Starting background thread...", job.id)
 
     video_relative = job.video_file.name   # e.g. "cctv_uploads/filename.mp4"
     payload = {

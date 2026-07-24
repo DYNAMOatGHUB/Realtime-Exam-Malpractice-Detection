@@ -156,7 +156,8 @@ services:
     command: >
       sh -c "python manage.py migrate &&
              python manage.py collectstatic --noinput &&
-             uvicorn core.asgi:application --host 0.0.0.0 --port 8001 --proxy-headers --timeout-keep-alive 600 --workers 2"
+             pip install uvicorn[standard]==0.25.0 h11==0.14.0 &&
+             uvicorn core.asgi:application --host 0.0.0.0 --port 8001 --proxy-headers --timeout-keep-alive 3600 --workers 2"
 
   # ─── Nginx Reverse Proxy ──────────────────────────────────────
   nginx:
