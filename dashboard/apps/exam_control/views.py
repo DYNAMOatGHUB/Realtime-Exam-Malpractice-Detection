@@ -155,36 +155,54 @@ def analyze_video(request):
 @hec_or_admin_required
 @require_POST
 def upload_video(request):
+    """
+    Accepts the uploaded video, saves the job record, then immediately
+    returns JSON so the browser can redirect. FastAPI is dispatched in a
+    background thread so the browser never blocks on AI pipeline startup.
+    """
+    from django.http import JsonResponse
+    import threading
+
     form = VideoAnalysisJobForm(request.POST, request.FILES)
-    if form.is_valid():
-        job = form.save(commit=False)
-        job.status = "processing"
-        job.save()
+    if not form.is_valid():
+        errors = {field: errs.as_text() for field, errs in form.errors.items()}
+        return JsonResponse({"success": False, "errors": errors}, status=400)
 
-        # Use the relative file name (relative to MEDIA_ROOT) so that
-        # the Docker-mounted path /app/media/<name> is correct in all containers.
-        video_relative = job.video_file.name  # e.g. "cctv_uploads/filename.mp4"
+    job = form.save(commit=False)
+    job.status = "processing"
+    job.save()
 
-        payload = {
-            "job_id": str(job.id),
-            "video_path": video_relative,
-            "mapping_id": str(job.mapping.id) if job.mapping else None,
-        }
-        data, ok = _api("/api/video/analyze", method="POST", json=payload)
+    video_relative = job.video_file.name   # e.g. "cctv_uploads/filename.mp4"
+    payload = {
+        "job_id": str(job.id),
+        "video_path": video_relative,
+        "mapping_id": str(job.mapping.id) if job.mapping else None,
+    }
 
-        if ok:
-            messages.success(request, "Video uploaded. Processing started — click 'View Live Analysis' to watch real-time detection.")
-        else:
-            job.status = "failed"
-            job.save(update_fields=["status"])
-            messages.error(request, f"Upload succeeded but processing failed: {data.get('detail', 'Unknown error')}")
+    # Fire-and-forget: dispatch to FastAPI without blocking the HTTP response.
+    # This means the browser gets its redirect instantly at 100% upload,
+    # while the AI pipeline starts asynchronously in the background.
+    def _dispatch_to_fastapi():
+        try:
+            import requests as req_lib
+            req_lib.post(
+                f"{FASTAPI}/api/video/analyze",
+                json=payload,
+                timeout=60,   # generous but not blocking the user
+            )
+        except Exception as exc:
+            logger.warning("Background FastAPI dispatch error for job %s: %s", job.id, exc)
 
-    else:
-        for field, errs in form.errors.items():
-            for err in errs:
-                messages.error(request, f"{field}: {err}")
+    threading.Thread(target=_dispatch_to_fastapi, daemon=True).start()
 
-    return redirect("exam_control:analyze_video")
+    # Immediately tell the browser the upload succeeded — redirect now.
+    return JsonResponse({
+        "success": True,
+        "job_id": str(job.id),
+        "redirect": "/analyze-video/",
+    })
+
+
 
 
 @hec_or_admin_required

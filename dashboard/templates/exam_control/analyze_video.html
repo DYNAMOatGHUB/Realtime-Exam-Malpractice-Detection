@@ -933,12 +933,12 @@
     xhr.upload.addEventListener('progress', (ev) => {
       if (!ev.lengthComputable) return;
       const percent  = Math.round((ev.loaded / ev.total) * 100);
-      const elapsed  = (Date.now() - startTime) / 1000;   // seconds
-      const speed    = ev.loaded / elapsed;               // bytes/s
+      const elapsed  = (Date.now() - startTime) / 1000;
+      const speed    = ev.loaded / elapsed;
       const remaining = speed > 0 ? (ev.total - ev.loaded) / speed : 0;
 
-      fill.style.width   = percent + '%';
-      pct.textContent    = percent + '%';
+      fill.style.width    = percent + '%';
+      pct.textContent     = percent + '%';
       xferred.textContent = fmt(ev.loaded) + ' of ' + fmt(ev.total);
 
       if (remaining > 0) {
@@ -949,25 +949,61 @@
     });
 
     xhr.upload.addEventListener('load', () => {
-      fill.style.width = '100%';
-      pct.textContent  = '100%';
-      eta.textContent  = 'Upload done — dispatching to AI pipeline…';
+      // 100% sent to server — update label while waiting for JSON response
+      fill.style.width    = '100%';
+      pct.textContent     = '100%';
+      eta.textContent     = 'Saving & registering job…';
       xferred.textContent = fmt(totalBytes) + ' of ' + fmt(totalBytes);
+      document.querySelector('.upload-progress-label').innerHTML =
+        '<div class="upload-spinner"></div> Registering job…';
     });
 
     xhr.addEventListener('load', () => {
-      // Server responded — redirect to the jobs page
-      window.location.href = window.location.pathname;
+      // Server responded with JSON
+      try {
+        const resp = JSON.parse(xhr.responseText);
+        if (resp.success) {
+          eta.textContent = '✓ Upload complete! Redirecting…';
+          fill.style.background = 'linear-gradient(90deg, #22c55e, #16a34a)';
+          setTimeout(() => { window.location.href = resp.redirect || window.location.pathname; }, 600);
+        } else {
+          // Validation error from server (bad form data)
+          const errText = Object.values(resp.errors || {}).join(' | ') || 'Server rejected the upload.';
+          eta.textContent = '⚠ ' + errText;
+          submitBtn.disabled = false;
+        }
+      } catch (_) {
+        // Non-JSON response (e.g. HTML error page) — redirect anyway since file is likely saved
+        if (xhr.status >= 200 && xhr.status < 400) {
+          window.location.href = window.location.pathname;
+        } else {
+          eta.textContent = `⚠ Server error (${xhr.status}). Please check the jobs list below.`;
+          submitBtn.disabled = false;
+        }
+      }
     });
 
     xhr.addEventListener('error', () => {
-      eta.textContent = '⚠ Upload failed. Please retry.';
+      // Pure network failure (DNS, connection reset) — extremely rare after the OOM fix
+      eta.textContent = '⚠ Network error. Check your connection and retry.';
+      fill.style.background = 'linear-gradient(90deg, #ef4444, #dc2626)';
       submitBtn.disabled = false;
     });
 
+    xhr.addEventListener('timeout', () => {
+      eta.textContent = '⚠ Connection timed out. The file may still be uploading — check the jobs list.';
+      submitBtn.disabled = false;
+    });
+
+    // Set a very generous timeout — 30 min for huge files on slow connections
+    xhr.timeout = 30 * 60 * 1000;
     xhr.open('POST', uploadForm.action);
+    // Explicitly set X-CSRFToken header in case FormData doesn't carry it
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    xhr.setRequestHeader('X-CSRFToken', csrfToken);
     xhr.send(formData);
   });
+
 
   // ── Delete modal ─────────────────────────────────────────────
   function openDeleteModal(jobId, fileName) {
