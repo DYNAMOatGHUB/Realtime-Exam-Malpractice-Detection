@@ -10,7 +10,7 @@ from datetime import datetime
 
 from passlib.context import CryptContext
 from sqlalchemy import Boolean, DateTime, Enum, String, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.types import Uuid as UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base

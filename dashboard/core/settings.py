@@ -72,12 +72,8 @@ ASGI_APPLICATION = "core.asgi.application"
 # ── Database ──────────────────────────────────────────────────
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": config("POSTGRES_DB", default="exam_vigilance"),
-        "USER": config("POSTGRES_USER", default="vigilance_user"),
-        "PASSWORD": config("POSTGRES_PASSWORD", default="password"),
-        "HOST": config("POSTGRES_HOST", default="localhost"),
-        "PORT": config("POSTGRES_PORT", default="5432"),
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
     }
 }
 
@@ -97,8 +93,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # ── Channels / Redis ──────────────────────────────────────────
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {"hosts": [config("REDIS_URL", default="redis://localhost:6379/0")]},
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
     }
 }
 
@@ -148,3 +143,5 @@ MESSAGE_TAGS = {
     messages.WARNING: "warning",
     messages.ERROR: "error",
 }
+
+# Trigger reload 2

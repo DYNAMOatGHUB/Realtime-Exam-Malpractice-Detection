@@ -15,7 +15,6 @@ from sqlalchemy import select, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.redis_client import get_async_redis, REVIEW_QUEUE_KEY
 from app.models.detection import DetectionEvent, TriageStatus
 
 router = APIRouter()
@@ -109,8 +108,7 @@ async def detection_stats(db: AsyncSession = Depends(get_db)):
     )
     pending = pending_q.scalar_one()
 
-    r = await get_async_redis()
-    queue_depth = await r.llen(REVIEW_QUEUE_KEY)
+    queue_depth = 0
 
     return {
         "total_events": total,

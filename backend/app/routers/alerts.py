@@ -136,10 +136,8 @@ async def alert_log(
 async def get_review_queue_items(limit: int = 20):
     """Fetch pending mid-confidence events from the Redis review queue for the HEC dashboard."""
     import json
-    from app.core.redis_client import get_async_redis, REVIEW_QUEUE_KEY
-
-    r = await get_async_redis()
-    raw_items = await r.lrange(REVIEW_QUEUE_KEY, 0, limit - 1)
+    
+    raw_items = []
 
     items = []
     for raw in raw_items:

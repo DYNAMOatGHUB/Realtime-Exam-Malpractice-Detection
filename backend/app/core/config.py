@@ -26,7 +26,7 @@ class Settings(BaseSettings):
 
     # ── Database ─────────────────────────────────────────────────
     database_url: str = Field(
-        "postgresql+asyncpg://vigilance_user:password@localhost:5432/exam_vigilance"
+        "sqlite+aiosqlite:///../dashboard/db.sqlite3"
     )
     postgres_host: str = "localhost"
     postgres_port: int = 5432

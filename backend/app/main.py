@@ -3,7 +3,12 @@ FastAPI application entry point.
 """
 from __future__ import annotations
 
+import sys
+import asyncio
 import logging
+
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -12,7 +17,6 @@ from fastapi.responses import JSONResponse
 
 from app.core.config import get_settings
 from app.core.database import create_all_tables
-from app.core.redis_client import close_async_redis
 from app.routers import streams, detections, alerts, auth, video
 
 logger = logging.getLogger(__name__)
@@ -35,7 +39,6 @@ async def lifespan(app: FastAPI):
     # Shutdown
     from app.services.rtsp_capture import stop_all_streams
     stop_all_streams()
-    await close_async_redis()
     logger.info("Exam Vigilance backend shut down cleanly")
 
 
@@ -81,25 +84,15 @@ app.include_router(alerts.router, prefix="/api/alerts", tags=["Alerts"])
 
 @app.get("/api/health", tags=["Health"])
 async def health_check():
-    from app.core.redis_client import get_async_redis
     from app.services.rtsp_capture import get_active_cameras
     import datetime
-
-    # Redis ping
-    redis_ok = False
-    try:
-        r = await get_async_redis()
-        redis_ok = await r.ping()
-    except Exception:
-        pass
 
     active_cameras = get_active_cameras()
 
     return JSONResponse({
-        "status": "healthy" if redis_ok else "degraded",
+        "status": "healthy",
         "timestamp": datetime.datetime.utcnow().isoformat(),
         "services": {
-            "redis": "ok" if redis_ok else "error",
             "active_streams": len(active_cameras),
             "camera_ids": active_cameras,
         },

@@ -18,22 +18,33 @@ import logging
 import os
 import subprocess
 import sys
+import time
 from typing import AsyncGenerator, List, Optional
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+# Add root project folder to sys.path so we can import `ml` module
+ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
+if ROOT_PATH not in sys.path:
+    sys.path.insert(0, ROOT_PATH)
+
+from ml.models.behavior_analyzer import BehaviorAnalyzer
+from ultralytics import YOLO
+
+_model = None
+def get_model():
+    global _model
+    if _model is None:
+        _model = YOLO('yolov8s-pose.pt')
+    return _model
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-FFMPEG  = "/usr/bin/ffmpeg"
-FFPROBE = "/usr/bin/ffprobe"
-
-# Add ml/ package to path so we can import the engine
-ML_PATH = "/ml"
-if ML_PATH not in sys.path:
-    sys.path.insert(0, ML_PATH)
+FFMPEG = os.environ.get("FFMPEG_BIN", "ffmpeg.exe")
+FFPROBE = os.environ.get("FFPROBE_BIN", "ffprobe.exe")
 
 # ── Class metadata (matches ExamCheatingDataset folder names) ────
 # These are the exact classes trained on your dataset:
@@ -86,16 +97,15 @@ def _get_engine():
 def _resolve(video_rel: str) -> str:
     import urllib.parse
     p = urllib.parse.unquote(video_rel)
-    media = "/app/media"
-    for pfx in ("/app/media/", "/media/"):
-        if p.lower().startswith(pfx):
-            p = p[len(pfx):]
+    media = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../dashboard/media"))
+    for pfx in ("/app/media/", "/media/", "\\media\\"):
+        if pfx in p:
+            p = p.split(pfx, 1)[-1]
             break
-    for sep in ("\\media\\", "/media/"):
-        if sep in p:
-            p = p.split(sep, 1)[-1]
-            break
-    return os.path.join(media, p)
+    if not p.startswith(media):
+        p = p.lstrip("\\/")
+        return os.path.join(media, p)
+    return p
 
 
 # ── ffprobe metadata ───────────────────────────────────────────
@@ -327,14 +337,15 @@ def _annotate_with_cv2(jpeg_bytes: bytes, detections: List[dict]) -> bytes:
 
 # ── MJPEG pipe reader ──────────────────────────────────────────
 
-async def _iter_mjpeg(stdout) -> AsyncGenerator[bytes, None]:
+async def _iter_mjpeg(proc) -> AsyncGenerator[bytes, None]:
+    loop = asyncio.get_event_loop()
     SOI = b"\xff\xd8"
     EOI = b"\xff\xd9"
     buf = b""
     in_frame = False
 
     while True:
-        chunk = await stdout.read(131072)
+        chunk = await loop.run_in_executor(None, proc.stdout.read, 131072)
         if not chunk:
             break
         buf += chunk
@@ -363,16 +374,18 @@ async def _iter_mjpeg(stdout) -> AsyncGenerator[bytes, None]:
 async def _extract_jpeg(video_path: str, ts: float,
                          width: int, height: int) -> Optional[bytes]:
     try:
-        proc = await asyncio.create_subprocess_exec(
-            FFMPEG,
-            "-ss", f"{ts:.4f}", "-i", video_path,
-            "-vframes", "1",
-            "-vf", f"scale={width}:{height}:force_original_aspect_ratio=decrease",
-            "-q:v", "2", "-f", "mjpeg", "pipe:1",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.DEVNULL,
+        proc = subprocess.Popen(
+            [
+                FFMPEG,
+                "-ss", f"{ts:.4f}", "-i", video_path,
+                "-vframes", "1",
+                "-vf", f"scale={width}:{height}:force_original_aspect_ratio=decrease",
+                "-q:v", "2", "-f", "mjpeg", "pipe:1"
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
         )
-        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=10)
+        stdout, _ = proc.communicate(timeout=10)
         if stdout and len(stdout) > 200:
             return stdout
     except Exception as exc:
@@ -445,96 +458,99 @@ async def _stream_video(job_id: str, video_rel: str) -> AsyncGenerator[str, None
     SCALE_H  = min(height, 720)
     ANOM_WIN = 0.8   # seconds window around anomaly timestamps
 
-    proc = await asyncio.create_subprocess_exec(
-        FFMPEG, "-i", video_path,
-        "-r", str(OUT_FPS),
+    proc = subprocess.Popen(
+        [FFMPEG, "-i", video_path, "-r", str(OUT_FPS),
         "-vf", f"scale={SCALE_W}:{SCALE_H}:force_original_aspect_ratio=decrease,pad={SCALE_W}:{SCALE_H}:(ow-iw)/2:(oh-ih)/2:black",
-        "-f", "mjpeg", "-q:v", "4", "pipe:1",
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.DEVNULL,
+        "-f", "mjpeg", "-q:v", "4", "pipe:1"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
     )
 
-    frame_count     = 0
-    total_anomalies = 0      # counts distinct evidence events, not raw frames
-    anomaly_log: List[dict] = []
-    evidence_sent: set = set()  # dedup key: round(timestamp, 0)
+    frame_count = 0
+    total_anomalies = 0
+    anomaly_log = []
+    evidence_sent = set()
+    start_time = time.time()
+    
+    analyzer = BehaviorAnalyzer(fps=OUT_FPS, sustained_seconds=2.0, required_episodes=2)
+    model = get_model()
 
     try:
-        async for jpeg_bytes in _iter_mjpeg(proc.stdout):
+        async for jpeg_bytes in _iter_mjpeg(proc):
             frame_count += 1
-            timestamp   = frame_count / OUT_FPS
-            progress    = round(min(100.0, timestamp / max(duration, 0.001) * 100), 1)
+            timestamp = frame_count / OUT_FPS
+            progress = round(min(100.0, timestamp / max(duration, 0.001) * 100), 1)
+            det_payload = []
+            
+            if has_cv2:
+                import cv2, numpy as np
+                arr = np.frombuffer(jpeg_bytes, dtype=np.uint8)
+                frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+                if frame is not None:
+                    results = await loop.run_in_executor(None, lambda: model.track(frame, persist=True, verbose=False, imgsz=1280, conf=0.15))
+                    states = {}
+                    
+                    for r in results:
+                        boxes = r.boxes.xyxy.cpu().numpy()
+                        classes = r.boxes.cls.cpu().numpy()
+                        confs = r.boxes.conf.cpu().numpy()
+                        track_ids = r.boxes.id.int().cpu().numpy() if r.boxes.id is not None else []
+                        keypoints = r.keypoints.data.cpu().numpy() if r.keypoints is not None and r.keypoints.data is not None else []
 
-            detections: List[dict] = []
+                        for i in range(len(boxes)):
+                            x1, y1, x2, y2 = map(int, boxes[i])
+                            conf = confs[i]
+                            cls_id = int(classes[i])
+                            track_id = int(track_ids[i]) if i < len(track_ids) else -1
+                            
+                            label = model.names[cls_id] if hasattr(model, 'names') else str(cls_id)
+                            color = (0, 255, 0)
+                            state = "NORMAL"
+                            anom_conf = 0.0
 
-            if mode == "yolo" and engine:
-                # ── Real YOLO detection on every frame ──────────
-                if has_cv2:
-                    import cv2, numpy as np
-                    arr   = np.frombuffer(jpeg_bytes, dtype=np.uint8)
-                    frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
-                    if frame is not None:
-                        raw_dets = await loop.run_in_executor(
-                            None, engine.infer, frame
-                        )
-                        # Add color field if missing
-                        for d in raw_dets:
-                            d.setdefault("color", CLASS_COLORS.get(d["class"], DEFAULT_COLOR))
-                        detections = raw_dets
+                            kp_raw = keypoints[i] if i < len(keypoints) else []
+                            
+                            kp_norm = [[float(k[0])/SCALE_W, float(k[1])/SCALE_H, float(k[2])] for k in kp_raw]
+                            
+                            state, anom_conf = analyzer.update_person(track_id, kp_norm)
+                            states[track_id] = state
+
+                            if state == "SUSPICIOUS":
+                                color = (0, 0, 255)
+                                det_payload.append({
+                                    "track_id": track_id,
+                                    "class": "BEHAVIOR_ANOMALY",
+                                    "confidence": anom_conf,
+                                    "bbox": [float(x1), float(y1), float(x2), float(y2)]
+                                })
+                            elif state == "WARNING":
+                                color = (0, 165, 255) # Orange
+
+                            cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+                            cv2.putText(frame, f"ID:{track_id} {state} {anom_conf:.2f}", (x1, max(10, y1-10)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+                            
+                            for kpt in kp_raw:
+                                kx, ky, kconf = int(kpt[0]), int(kpt[1]), float(kpt[2])
+                                if kconf > 0.4:
+                                    cv2.circle(frame, (kx, ky), 3, color, -1)
+
+                    ret, buffer = cv2.imencode('.jpg', frame)
+                    if ret:
+                        annotated = buffer.tobytes()
+                    else:
+                        annotated = jpeg_bytes
                 else:
-                    detections = await loop.run_in_executor(
-                        None, engine.infer_jpeg, jpeg_bytes
-                    )
-
-            else:
-                # ── Motion proxy: flag near-anomaly timestamps ──
-                # ANOM_WIN: only highlight frames within 0.5s of the detected
-                # motion peak — prevents hundreds of frames triggering per event
-                near = [t for t in anomaly_timestamps if abs(t - timestamp) <= ANOM_WIN]
-                # Only fire on the FIRST frame of each anomaly window
-                # (the frame closest to the peak timestamp)
-                is_peak = any(abs(t - timestamp) <= (1.0 / OUT_FPS) for t in anomaly_timestamps)
-                if near and is_peak:
-                    import random
-                    rng = random.Random(int(near[0] * 100))
-                    # Only use actual anomaly class names — NOT MOBILE_PHONE etc.
-                    cls = rng.choice(ANOMALY_CLASS_NAMES)
-                    # Box covering the central/lower portion of the frame
-                    # (where students typically sit)
-                    margin_x = int(SCALE_W * 0.15)
-                    margin_y = int(SCALE_H * 0.20)
-                    x1 = rng.randint(margin_x, SCALE_W//2 - 60)
-                    y1 = rng.randint(margin_y, SCALE_H//2 - 40)
-                    x2 = x1 + rng.randint(150, 280)
-                    y2 = y1 + rng.randint(160, 280)
-                    detections = [{
-                        "class":      cls,
-                        "confidence": round(rng.uniform(0.55, 0.78), 2),
-                        "bbox":       [x1, y1, min(x2, SCALE_W-5), min(y2, SCALE_H-5)],
-                        "color":      CLASS_COLORS.get(cls, DEFAULT_COLOR),
-                    }]
-
-            # ── Annotate frame ──────────────────────────────────
-            if detections:
-                if has_cv2:
-                    annotated = await loop.run_in_executor(
-                        None, _annotate_with_cv2, jpeg_bytes, detections
-                    )
-                else:
-                    annotated = await loop.run_in_executor(
-                        None, _annotate_jpeg, jpeg_bytes, detections, SCALE_W, SCALE_H
-                    )
+                    annotated = jpeg_bytes
             else:
                 annotated = jpeg_bytes
 
-            # ── One evidence event per second-window of anomaly ─────────
-            if detections:
+            if det_payload:
                 ts_key = round(timestamp, 0)
                 if ts_key not in evidence_sent:
-                    evidence_sent.add(ts_key)   # mark FIRST, prevents double-fire
+                    evidence_sent.add(ts_key)
                     total_anomalies += 1
 
-                    det0 = detections[0]
+                    det0 = det_payload[0]
                     anomaly_log.append({
                         "frame":      frame_count,
                         "timestamp":  round(timestamp, 2),
@@ -545,34 +561,17 @@ async def _stream_video(job_id: str, video_rel: str) -> AsyncGenerator[str, None
                     if len(anomaly_log) > 200:
                         anomaly_log.pop(0)
 
-                    # ── Extract and send the evidence frame ──────
-                    ev_jpeg = await _extract_jpeg(video_path, timestamp, SCALE_W, SCALE_H)
-                    if ev_jpeg:
-                        if has_cv2:
-                            ev_annotated = await loop.run_in_executor(
-                                None, _annotate_with_cv2, ev_jpeg, detections
-                            )
-                        else:
-                            ev_annotated = await loop.run_in_executor(
-                                None, _annotate_jpeg, ev_jpeg, detections, SCALE_W, SCALE_H
-                            )
-                        ev_payload = {
-                            "type":       "evidence",
-                            "timestamp":  round(timestamp, 2),
-                            "class":      det0["class"],
-                            "confidence": det0["confidence"],
-                            "bbox":       det0["bbox"],
-                            "image":      base64.b64encode(ev_annotated).decode(),
-                            "mime_type":  "image/jpeg",
-                        }
-                        yield f"data: {json.dumps(ev_payload)}{sep}"
+                    ev_payload = {
+                        "type":       "evidence",
+                        "timestamp":  round(timestamp, 2),
+                        "class":      det0["class"],
+                        "confidence": det0["confidence"],
+                        "bbox":       det0["bbox"],
+                        "image":      base64.b64encode(annotated).decode(),
+                        "mime_type":  "image/jpeg",
+                    }
+                    yield f"data: {json.dumps(ev_payload)}{sep}"
 
-            # ── Send frame event ────────────────────────────────
-            det_payload = [
-                {"track_id": i+1, "class": d["class"],
-                 "confidence": d["confidence"], "bbox": d["bbox"]}
-                for i, d in enumerate(detections)
-            ]
             yield f'data: {json.dumps({"type":"frame","frame":frame_count,"progress":progress,"anomalies":total_anomalies,"detections":det_payload,"image":base64.b64encode(annotated).decode(),"mime_type":"image/jpeg"})}{sep}'
             await asyncio.sleep(0)
 

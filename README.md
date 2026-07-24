@@ -43,8 +43,6 @@ CCTV RTSP ──► OpenCV Capture ──► Redis Queue
 | Database | PostgreSQL + SQLAlchemy |
 | Object Storage | MinIO |
 | Email | Gmail SMTP |
-| Proxy | Nginx |
-| Container | Docker Compose |
 
 ---
 
@@ -68,37 +66,32 @@ Edit `.env` and fill in:
 - `SECRET_KEY` — generate with `python -c "import secrets; print(secrets.token_urlsafe(50))"`
 - Review all other defaults (ports, MinIO credentials, etc.)
 
-### 2. Start the stack
+### 2. Start the services (Local)
+
+Run Redis and PostgreSQL on your machine, then start the servers:
 
 ```bash
-docker compose up -d
+# Start FastAPI backend
+cd backend
+python -m uvicorn app.main:app --reload --port 8000
+
+# Start Celery workers
+celery -A app.core.celery_app worker -l info -P eventlet
+
+# Start Django dashboard
+cd ../dashboard
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver 8001
 ```
 
-First run will pull images and build containers (~5 min). Watch logs with:
-```bash
-docker compose logs -f
-```
-
-### 3. Create the admin user
-
-```bash
-docker compose exec dashboard python manage.py createsuperuser
-```
-
-### 4. Run database migrations
-
-```bash
-docker compose exec dashboard python manage.py migrate
-```
-
-### 5. Access the dashboards
+### 3. Access the dashboards
 
 | Service | URL | Credentials |
 |---|---|---|
-| HEC Dashboard | http://localhost (via Nginx) | Your Django superuser |
-| Django Admin | http://localhost/django-admin/ | Superuser |
-| FastAPI Docs | http://localhost/api/docs | — |
-| MinIO Console | http://localhost:9001 | `minioadmin` / `minioadmin` |
+| HEC Dashboard | http://localhost:8001 | Your Django superuser |
+| Django Admin | http://localhost:8001/django-admin/ | Superuser |
+| FastAPI Docs | http://localhost:8000/api/docs | — |
 
 ---
 
@@ -172,10 +165,6 @@ python ml/models/trt_export.py \
 ## Running Tests
 
 ```bash
-# Backend unit tests
-docker compose exec fastapi pytest backend/tests/ -v
-
-# Or locally (requires dependencies installed)
 cd backend && pytest tests/ -v
 ```
 
@@ -220,14 +209,6 @@ exam-anomaly-detection-system/
 │   ├── models/           # YOLO, Pose, LSTM wrappers
 │   ├── training/         # Dataset, train loop, evaluation
 │   └── weights/          # .pt / .engine files (gitignored)
-├── infra/
-│   ├── postgres/         # init.sql
-│   ├── minio/            # setup.sh
-│   └── nginx/            # nginx.conf
-├── Dockerfile.backend
-├── Dockerfile.dashboard
-├── Dockerfile.celery
-├── docker-compose.yml
 └── .env.example
 ```
 

@@ -18,7 +18,6 @@ from email import encoders
 from typing import Any
 
 from app.core.config import get_settings
-from app.core.redis_client import get_sync_redis
 
 logger = logging.getLogger(__name__)
 settings = get_settings()

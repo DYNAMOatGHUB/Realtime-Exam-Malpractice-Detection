@@ -1,5 +1,4 @@
-from .yolo_detector import YOLODetector
-from .pose_estimator import PoseEstimator
-from .lstm_classifier import LSTMClassifier
+from .inference_engine import ExamAnomalyEngine
+from .behavior_analyzer import BehaviorAnalyzer
 
-__all__ = ["YOLODetector", "PoseEstimator", "LSTMClassifier"]
+__all__ = ["ExamAnomalyEngine", "BehaviorAnalyzer"]

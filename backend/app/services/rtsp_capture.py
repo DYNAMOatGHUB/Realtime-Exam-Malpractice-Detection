@@ -22,7 +22,7 @@ from typing import Dict
 # so that FastAPI starts even when they are not installed.
 
 from app.core.config import get_settings
-from app.core.redis_client import push_frame_sync, get_sync_redis, ACTIVE_STREAMS_KEY
+from app.services.inference_worker import process_single_frame
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -54,16 +54,13 @@ class CaptureWorker:
         self._thread.start()
         logger.info("Started capture worker for camera: %s", self.config.camera_id)
 
-        # Register in Redis active streams set
-        r = get_sync_redis()
-        r.sadd(ACTIVE_STREAMS_KEY, self.config.camera_id)
+        
 
     def stop(self) -> None:
         self._stop_event.set()
         if self._thread is not None:
             self._thread.join(timeout=10)
-        r = get_sync_redis()
-        r.srem(ACTIVE_STREAMS_KEY, self.config.camera_id)
+        
         logger.info("Stopped capture worker for camera: %s", self.config.camera_id)
 
     @property
@@ -127,7 +124,7 @@ class CaptureWorker:
                 "height": frame.shape[0],
                 "width": frame.shape[1],
             }
-            push_frame_sync(self.config.camera_id, payload)
+            process_single_frame(payload)
         except Exception as exc:
             logger.error("Frame push error for camera %s: %s", self.config.camera_id, exc)
 

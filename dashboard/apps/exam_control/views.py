@@ -286,7 +286,7 @@ def video_stream_proxy(request, job_id):
     )
     response['Cache-Control'] = 'no-cache'
     response['X-Accel-Buffering'] = 'no'
-    response['Connection'] = 'keep-alive'
+    # response['Connection'] = 'keep-alive'
     return response
 
 

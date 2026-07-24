@@ -778,8 +778,7 @@
     Job <strong>{{ job.id|stringformat:"s"|slice:":8" }}…</strong> &nbsp;·&nbsp;
     <strong>{{ job.video_file.name|slice:"13:" }}</strong> &nbsp;·&nbsp;
     Status: <strong
-      style="color:{% if job.status == 'completed' %}#22c55e{% elif job.status == 'failed' %}#ef4444{% else %}#f59e0b{% endif %}">{{
-      job.get_status_display }}</strong>
+      style="color:{% if job.status == 'completed' %}#22c55e{% elif job.status == 'failed' %}#ef4444{% else %}#f59e0b{% endif %}">{{ job.get_status_display }}</strong>
   </span>
 </div>
 
@@ -1155,7 +1154,7 @@
     if (evtSrc) evtSrc.close();
     if (!firstFrame) {
       document.getElementById('errMsg').textContent =
-        'Connection lost. Ensure Docker services are running on port 8002.';
+        'Connection lost. Ensure backend services are running locally.';
       showState('error');
     }
   }

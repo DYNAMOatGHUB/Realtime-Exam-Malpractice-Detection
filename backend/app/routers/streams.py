@@ -74,8 +74,7 @@ async def start_stream_endpoint(req: StartStreamRequest):
         )
 
     # Trigger the first inference batch task immediately
-    from app.services.inference_worker import process_frame_batch
-    process_frame_batch.apply_async(args=[req.camera_id], queue="inference")
+    # Redis/Celery removed, frames processed locally in rtsp_capture thread
 
     return StreamResponse(
         camera_id=req.camera_id,

@@ -14,7 +14,6 @@ from typing import Any
 
 from app.celery_app import celery_app
 from app.core.config import get_settings
-from app.core.redis_client import push_to_review_queue, get_sync_redis
 
 logger = logging.getLogger(__name__)
 settings = get_settings()

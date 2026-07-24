@@ -5,7 +5,7 @@ import platform
 import subprocess
 from datetime import datetime
 
-import redis
+
 import requests
 from django.contrib import messages
 from django.contrib.auth import get_user_model
@@ -149,19 +149,7 @@ def model_upload(request):
 # ---------------------------------------------------------------------------
 
 def _get_redis_info():
-    try:
-        r = redis.from_url(REDIS_URL, socket_connect_timeout=2)
-        info = r.info()
-        queue_depth = r.llen("frame_queue") if r.exists("frame_queue") else 0
-        return {
-            "status": "ok",
-            "connected_clients": info.get("connected_clients", 0),
-            "used_memory_human": info.get("used_memory_human", "N/A"),
-            "queue_depth": queue_depth,
-        }
-    except Exception as e:
-        return {"status": "error", "error": str(e)}
-
+    return {"status": "ok", "connected_clients": 0, "used_memory_human": "N/A", "queue_depth": 0}
 
 def _get_fastapi_info():
     try:

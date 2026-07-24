@@ -40,24 +40,34 @@ EXAM_CLASS_MAP: Dict[str, str] = {
     "giving object":  "GIVING_OBJECT",
     "giving code":    "GIVING_CODE",
     "cheating":       "CHEATING",
-    # Fallback mapping (in case training used the cleaned names directly)
     "NORMAL":            "NORMAL",
     "LOOKING_AT_FRIEND": "LOOKING_AT_FRIEND",
     "GIVING_OBJECT":     "GIVING_OBJECT",
     "GIVING_CODE":       "GIVING_CODE",
     "CHEATING":          "CHEATING",
+    
+    # YOLO COCO fallback mappings for the base model
+    "cell phone":        "USING_MOBILE_PHONE",
+    "book":              "UNAUTHORIZED_MATERIALS",
+    "laptop":            "UNAUTHORIZED_MATERIALS",
 }
 
 # Classes that count as an anomaly (everything except NORMAL)
-ANOMALY_CLASSES = {"LOOKING_AT_FRIEND", "GIVING_OBJECT", "GIVING_CODE", "CHEATING"}
+ANOMALY_CLASSES = {
+    "LOOKING_AT_FRIEND", "GIVING_OBJECT", "GIVING_CODE", "CHEATING",
+    "USING_MOBILE_PHONE", "UNAUTHORIZED_MATERIALS"
+}
 
 # Visual colour per class (R, G, B)
 CLASS_COLORS: Dict[str, tuple] = {
-    "NORMAL":            (30, 200, 30),    # green (should never show a box)
-    "LOOKING_AT_FRIEND": (255, 60,  30),   # red-orange
-    "GIVING_OBJECT":     (255, 130, 20),   # orange
-    "GIVING_CODE":       (220, 30,  30),   # red
-    "CHEATING":          (200, 10,  10),   # deep red
+    "NORMAL":                 (30, 200, 30),    # green (should never show a box)
+    "LOOKING_AT_FRIEND":      (255, 60,  30),   # red-orange
+    "GIVING_OBJECT":          (255, 130, 20),   # orange
+    "GIVING_CODE":            (220, 30,  30),   # red
+    "CHEATING":               (200, 10,  10),   # deep red
+    "USING_MOBILE_PHONE":     (255, 0,   255),  # magenta
+    "UNAUTHORIZED_MATERIALS": (255, 165, 0),    # orange
+
     # Legacy / detection model names
     "COPYING":           (255, 30,  30),
     "MOBILE_PHONE":      (220, 60,  30),
@@ -80,6 +90,7 @@ WEIGHT_CANDIDATES = [
     "exam_anomaly_best.pt",         # detection model (if upgraded)
     "exam_anomaly.pt",
     "best.pt",
+    "yolov8n.pt",                   # Default base model
 ]
 
 
@@ -115,7 +126,8 @@ class ExamAnomalyEngine:
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     def _find_weights(self) -> Optional[Path]:
-        env = os.getenv("ML_MODEL_PATH", "")
+        # Try both ML_MODEL_PATH and YOLO_MODEL_PATH
+        env = os.getenv("ML_MODEL_PATH", "") or os.getenv("YOLO_MODEL_PATH", "")
         if env and Path(env).exists():
             return Path(env)
         for name in WEIGHT_CANDIDATES:
@@ -171,6 +183,13 @@ class ExamAnomalyEngine:
         task = getattr(self.model, "task", "") or ""
         if "classify" in task or "cls" in path.name.lower():
             self.model_type = "classifier"
+            # ── Two-Stage Pipeline: Load Base Detector ──
+            try:
+                self.person_detector = YOLO("yolov8n.pt")
+                logger.info("✅ Base person detector loaded for two-stage inference.")
+            except Exception as e:
+                logger.error("Failed to load base person detector: %s", e)
+                self.person_detector = None
         else:
             self.model_type = "detector"
 
@@ -240,52 +259,86 @@ class ExamAnomalyEngine:
 
     def _infer_classifier(self, frame: np.ndarray, conf_threshold: float) -> List[dict]:
         """
-        Classification model: labels the entire frame.
-        For the UI we synthesise a bounding box covering the most-likely
-        region of activity (lower 2/3 of frame) since we have no exact coords.
+        Two-stage inference: 
+        1. Detect persons using yolov8n.pt.
+        2. Crop each person and classify using the custom model.
         """
-        results = self.model.predict(source=frame, verbose=False, stream=False)
         detections = []
-
-        for result in results:
-            if not hasattr(result, "probs") or result.probs is None:
-                continue
-
-            probs   = result.probs
-            cls_id  = int(probs.top1)
-            conf    = float(probs.top1conf)
-
-            if conf < conf_threshold:
-                continue
-
-            raw_name = self.model.names[cls_id] if cls_id < len(self.class_names) else str(cls_id)
-            cls_name = _normalise_class(raw_name)
-
-            # Skip normal frames — no anomaly to show
-            if cls_name == "NORMAL":
-                continue
-
-            h, w = frame.shape[:2]
-
-            # Synthesise a plausible bounding box.
-            # Without object detection we can't know exact location,
-            # so we highlight a central student region.
-            # Once upgraded to a detection model, real coords arrive here.
-            pad_x = int(w * 0.15)
-            pad_y = int(h * 0.10)
-            x1 = pad_x
-            y1 = pad_y
-            x2 = w - pad_x
-            y2 = h - int(h * 0.05)
-
-            detections.append({
-                "class":      cls_name,
-                "confidence": round(conf, 3),
-                "bbox":       [x1, y1, x2, y2],
-                "color":      CLASS_COLORS.get(cls_name, DEFAULT_COLOR),
-                "is_anomaly": cls_name in ANOMALY_CLASSES,
-                "model_type": "classifier",
-            })
+        
+        # 1. Fallback to full frame if no detector
+        if getattr(self, "person_detector", None) is None:
+            results = self.model.predict(source=frame, verbose=False, stream=False)
+            for result in results:
+                if not hasattr(result, "probs") or result.probs is None: continue
+                probs = result.probs
+                cls_id = int(probs.top1)
+                conf = float(probs.top1conf)
+                if conf < conf_threshold: continue
+                
+                raw_name = self.model.names[cls_id] if cls_id < len(self.class_names) else str(cls_id)
+                cls_name = _normalise_class(raw_name)
+                if cls_name == "NORMAL": continue
+                
+                h, w = frame.shape[:2]
+                pad_x, pad_y = int(w * 0.15), int(h * 0.10)
+                detections.append({
+                    "class": cls_name, "confidence": round(conf, 3),
+                    "bbox": [pad_x, pad_y, w - pad_x, h - int(h * 0.05)],
+                    "color": CLASS_COLORS.get(cls_name, DEFAULT_COLOR),
+                    "is_anomaly": cls_name in ANOMALY_CLASSES,
+                    "model_type": "classifier",
+                })
+            return detections
+            
+        # 2. Stage 1: Detection (Detect people in the frame)
+        det_results = self.person_detector.predict(source=frame, classes=[0], verbose=False, stream=False)
+        if not det_results:
+            return detections
+            
+        h, w = frame.shape[:2]
+        
+        for det_res in det_results:
+            if not getattr(det_res, "boxes", None): continue
+            
+            for box in det_res.boxes:
+                # bounding box
+                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+                # ensure within frame
+                x1, y1 = max(0, x1), max(0, y1)
+                x2, y2 = min(w, x2), min(h, y2)
+                
+                # skip invalid or tiny boxes
+                if x2 - x1 < 20 or y2 - y1 < 20: continue
+                
+                # crop person
+                crop = frame[y1:y2, x1:x2]
+                
+                # Stage 2: Classification
+                cls_results = self.model.predict(source=crop, verbose=False, stream=False)
+                for res in cls_results:
+                    if not hasattr(res, "probs") or res.probs is None: continue
+                    probs = res.probs
+                    cls_id = int(probs.top1)
+                    conf = float(probs.top1conf)
+                    
+                    if conf < conf_threshold: continue
+                    
+                    raw_name = self.model.names[cls_id] if cls_id < len(self.class_names) else str(cls_id)
+                    cls_name = _normalise_class(raw_name)
+                    
+                    is_anomaly = cls_name in ANOMALY_CLASSES
+                    color = CLASS_COLORS.get(cls_name, DEFAULT_COLOR)
+                    
+                    detections.append({
+                        "class":      cls_name,
+                        "confidence": round(conf, 3),
+                        "bbox":       [x1, y1, x2, y2],
+                        "color":      color,
+                        "is_anomaly": is_anomaly,
+                        "model_type": "two_stage",
+                    })
+                    
+        return detections
 
         return detections
 
