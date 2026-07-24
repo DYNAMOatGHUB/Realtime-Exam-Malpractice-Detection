@@ -26,7 +26,8 @@ WORKDIR /app
 # Install Python dependencies first (Docker layer cache)
 COPY backend/requirements.txt backend_reqs.txt
 COPY ml/requirements.txt ml_reqs.txt
-RUN pip install --default-timeout=1000 --no-cache-dir -r backend_reqs.txt -r ml_reqs.txt
+RUN python3 -m pip install --upgrade pip && \
+    python3 -m pip install --default-timeout=1000 --no-cache-dir -r backend_reqs.txt -r ml_reqs.txt
 
 # Copy source
 COPY backend/ /app/
