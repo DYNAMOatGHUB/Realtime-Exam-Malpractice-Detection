@@ -1,7 +1,7 @@
 # ML inference & training
-torch==2.5.1
-torchvision==0.20.1
-torchaudio==2.5.1
+# NOTE: torch/torchvision/torchaudio are installed in the Dockerfile
+# directly from https://download.pytorch.org/whl/cu121 for reliability.
+# Do NOT add them back here.
 ultralytics==8.3.52
 numpy==1.26.4
 opencv-python-headless==4.10.0.84

@@ -24,8 +24,18 @@ WORKDIR /app
 
 COPY backend/requirements.txt backend_reqs.txt
 COPY ml/requirements.txt ml_reqs.txt
+
+# Step 1: Install all non-torch dependencies
 RUN python3 -m pip install --upgrade pip && \
-    python3 -m pip install --default-timeout=1000 --no-cache-dir -r backend_reqs.txt -r ml_reqs.txt
+    grep -v '^torch' ml_reqs.txt > /tmp/ml_notorch.txt && \
+    python3 -m pip install --default-timeout=600 --no-cache-dir \
+        -r backend_reqs.txt \
+        -r /tmp/ml_notorch.txt
+
+# Step 2: PyTorch from official CDN (more reliable than PyPI for large downloads)
+RUN python3 -m pip install --default-timeout=600 --no-cache-dir \
+        torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 \
+        --index-url https://download.pytorch.org/whl/cu121
 
 COPY backend/ /app/
 COPY ml/ /ml/
