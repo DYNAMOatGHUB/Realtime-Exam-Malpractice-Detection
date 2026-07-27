@@ -13,7 +13,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ── Security ──────────────────────────────────────────────────
 SECRET_KEY = config("DJANGO_SECRET_KEY", default="change-me-django-secret-key")
 DEBUG = config("DEBUG", default=True, cast=bool)
-ALLOWED_HOSTS = config("DJANGO_ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv())
+ALLOWED_HOSTS = config("DJANGO_ALLOWED_HOSTS", default="*", cast=Csv())
 
 # ── Applications ──────────────────────────────────────────────
 INSTALLED_APPS = [
@@ -98,7 +98,7 @@ CHANNEL_LAYERS = {
 }
 
 # ── FastAPI integration ───────────────────────────────────────
-FASTAPI_BASE_URL = config("FASTAPI_BASE_URL", default="http://localhost:8000")
+FASTAPI_BASE_URL = config("FASTAPI_BASE_URL", default="http://localhost:8001")
 
 # ── Static files ──────────────────────────────────────────────
 STATIC_URL = "/static/"
@@ -145,3 +145,18 @@ MESSAGE_TAGS = {
 }
 
 # Trigger reload 2
+
+# ── Email ──────────────────────────────────────────────────────
+# For local development, emails are printed to the console.
+# To send real emails, change the backend and fill in SMTP settings:
+#
+#   EMAIL_BACKEND   = "django.core.mail.backends.smtp.EmailBackend"
+#   EMAIL_HOST      = "smtp.gmail.com"
+#   EMAIL_PORT      = 587
+#   EMAIL_USE_TLS   = True
+#   EMAIL_HOST_USER = "your@gmail.com"
+#   EMAIL_HOST_PASSWORD = "your-app-password"
+#
+EMAIL_BACKEND   = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = "ExamGuard AI <noreply@examguard.ai>"
+

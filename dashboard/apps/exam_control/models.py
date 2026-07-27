@@ -76,6 +76,8 @@ class VideoAnalysisJob(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     total_anomalies = models.IntegerField(default=0)
     output_video_file = models.FileField(upload_to="processed_videos/", null=True, blank=True)
+    # Stores the last 50 anomaly events + evidence thumbnails (base64) from the SSE stream
+    anomaly_log = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 
@@ -86,3 +88,4 @@ class VideoAnalysisJob(models.Model):
 
     def __str__(self):
         return f"Job {self.id} ({self.get_status_display()})"
+

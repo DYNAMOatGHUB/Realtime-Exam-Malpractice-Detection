@@ -357,3 +357,282 @@ def stats_partial(request):
     return render(request, "exam_control/partials/stats_cards.html", {
         "stats": stats if ok else {},
     })
+
+
+# ── Job status update (called by the JS SSE client on completion) ─
+
+@hec_or_admin_required
+@require_POST
+def update_job_status(request, job_id):
+    """
+    Mark a job as completed and persist the anomaly log + evidence
+    thumbnails sent by the front-end when the SSE stream finishes.
+    """
+    import json as _json
+    job = get_object_or_404(VideoAnalysisJob, id=job_id)
+
+    try:
+        body = _json.loads(request.body)
+    except Exception:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    job.status = "completed"
+    job.total_anomalies = body.get("total_anomalies", job.total_anomalies)
+    job.anomaly_log = body.get("anomaly_log", [])
+    job.completed_at = datetime.utcnow()
+    job.save(update_fields=["status", "total_anomalies", "anomaly_log", "completed_at"])
+
+    logger.info("Job %s marked completed with %d anomalies.", job_id, job.total_anomalies)
+    return JsonResponse({"ok": True})
+
+
+# ── Alert Invigilator (send formal email) ─────────────────────
+
+@hec_or_admin_required
+@require_POST
+def alert_invigilator(request, job_id):
+    """
+    Send a formal HTML alert email to the invigilator assigned to this job.
+    The email contains:
+      - Subject: Anomaly Detected — [LH Code] | [Session] | [Date]
+      - Body:    Hall name, LH code, Camera ID, Invigilator name,
+                 date & time of analysis, anomaly count, evidence frames.
+    """
+    import base64
+    from email.mime.image import MIMEImage
+    from django.core.mail import EmailMultiAlternatives
+    from django.conf import settings as dj_settings
+
+    job = get_object_or_404(VideoAnalysisJob, id=job_id)
+
+    if not job.mapping or not job.mapping.invigilator:
+        return JsonResponse({"error": "No invigilator assigned to this job."}, status=400)
+
+    invig   = job.mapping.invigilator
+    lh      = job.mapping.lecture_hall
+    cam_id  = job.mapping.camera_id
+    session = job.mapping.exam_session_label or "N/A"
+    detected_at = job.completed_at or job.created_at
+    date_str    = detected_at.strftime("%d %B %Y")
+    time_str    = detected_at.strftime("%I:%M %p UTC")
+
+    subject = (
+        f"⚠️ Anomaly Detected — {lh.lh_code} | {session} | {date_str}"
+    )
+
+    # ── Build evidence image list ───────────────────────────────
+    evidence_items = [e for e in (job.anomaly_log or []) if e.get("image")][:6]
+
+    # ── Inline images for HTML email ───────────────────────────
+    img_tags    = ""
+    attachments = []
+    for idx, ev in enumerate(evidence_items):
+        cid  = f"evidence_{idx}"
+        conf = ev.get("confidence", 0)
+        ts   = ev.get("timestamp", "")
+        frame = ev.get("frame", "")
+        img_tags += f"""
+        <div style="display:inline-block;margin:6px;vertical-align:top;
+                    border:2px solid #ef4444;border-radius:8px;overflow:hidden;
+                    width:260px;">
+          <img src="cid:{cid}" width="260" style="display:block;" alt="Evidence frame">
+          <div style="background:#1a0a0a;padding:6px 10px;">
+            <span style="color:#ef4444;font-weight:700;font-size:12px;">CHEATING</span>
+            <span style="color:#94a3b8;font-size:11px;margin-left:8px;">
+              T={ts}s &nbsp;·&nbsp; Frame {frame} &nbsp;·&nbsp; {int(conf*100)}% confidence
+            </span>
+          </div>
+        </div>"""
+
+        try:
+            img_data = base64.b64decode(ev["image"])
+            mime_img = MIMEImage(img_data, _subtype="jpeg")
+            mime_img.add_header("Content-ID", f"<{cid}>")
+            mime_img.add_header("Content-Disposition", "inline",
+                                filename=f"evidence_{idx}.jpg")
+            attachments.append(mime_img)
+        except Exception as exc:
+            logger.warning("Could not attach evidence image %d: %s", idx, exc)
+
+    # ── HTML body ───────────────────────────────────────────────
+    html_body = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#0a0f1e;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0f1e;padding:32px 0;">
+    <tr><td align="center">
+      <table width="620" cellpadding="0" cellspacing="0"
+             style="background:#0f1729;border-radius:16px;
+                    border:1px solid rgba(239,68,68,0.35);
+                    box-shadow:0 20px 60px rgba(0,0,0,0.6);overflow:hidden;">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#7f1d1d,#991b1b);
+                     padding:28px 36px;text-align:center;">
+            <div style="font-size:13px;letter-spacing:0.15em;color:rgba(255,255,255,0.7);
+                        text-transform:uppercase;margin-bottom:8px;">ExamGuard AI — Security Alert</div>
+            <div style="font-size:26px;font-weight:800;color:#fff;line-height:1.2;">
+              ⚠️ Examination Anomaly Detected
+            </div>
+            <div style="margin-top:10px;font-size:13px;color:rgba(255,255,255,0.65);">
+              {date_str} &nbsp;·&nbsp; {time_str}
+            </div>
+          </td>
+        </tr>
+
+        <!-- Alert Summary -->
+        <tr>
+          <td style="padding:28px 36px 12px;">
+            <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);
+                        border-radius:10px;padding:16px 20px;margin-bottom:20px;">
+              <div style="color:#ef4444;font-size:13px;font-weight:700;
+                          letter-spacing:0.08em;text-transform:uppercase;margin-bottom:12px;">
+                Alert Summary
+              </div>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td width="50%" style="padding:4px 0;">
+                    <div style="color:#64748b;font-size:11px;text-transform:uppercase;
+                                letter-spacing:0.06em;">Invigilator</div>
+                    <div style="color:#f1f5f9;font-size:15px;font-weight:600;margin-top:2px;">
+                      {invig.full_name}
+                    </div>
+                  </td>
+                  <td width="50%" style="padding:4px 0;">
+                    <div style="color:#64748b;font-size:11px;text-transform:uppercase;
+                                letter-spacing:0.06em;">Email</div>
+                    <div style="color:#f1f5f9;font-size:14px;margin-top:2px;">
+                      {invig.email}
+                    </div>
+                  </td>
+                </tr>
+                <tr><td colspan="2" style="height:12px;"></td></tr>
+                <tr>
+                  <td width="50%" style="padding:4px 0;">
+                    <div style="color:#64748b;font-size:11px;text-transform:uppercase;
+                                letter-spacing:0.06em;">Lecture Hall</div>
+                    <div style="color:#f1f5f9;font-size:15px;font-weight:600;margin-top:2px;">
+                      {lh.name}
+                    </div>
+                  </td>
+                  <td width="50%" style="padding:4px 0;">
+                    <div style="color:#64748b;font-size:11px;text-transform:uppercase;
+                                letter-spacing:0.06em;">LH Code</div>
+                    <div style="color:#f1f5f9;font-size:15px;font-weight:600;margin-top:2px;">
+                      {lh.lh_code}
+                    </div>
+                  </td>
+                </tr>
+                <tr><td colspan="2" style="height:12px;"></td></tr>
+                <tr>
+                  <td width="50%" style="padding:4px 0;">
+                    <div style="color:#64748b;font-size:11px;text-transform:uppercase;
+                                letter-spacing:0.06em;">Camera ID</div>
+                    <div style="color:#f1f5f9;font-size:15px;font-weight:600;margin-top:2px;">
+                      {cam_id}
+                    </div>
+                  </td>
+                  <td width="50%" style="padding:4px 0;">
+                    <div style="color:#64748b;font-size:11px;text-transform:uppercase;
+                                letter-spacing:0.06em;">Exam Session</div>
+                    <div style="color:#f1f5f9;font-size:14px;margin-top:2px;">
+                      {session}
+                    </div>
+                  </td>
+                </tr>
+                <tr><td colspan="2" style="height:12px;"></td></tr>
+                <tr>
+                  <td colspan="2" style="padding:4px 0;">
+                    <div style="color:#64748b;font-size:11px;text-transform:uppercase;
+                                letter-spacing:0.06em;">Anomalies Detected</div>
+                    <div style="color:#ef4444;font-size:22px;font-weight:800;margin-top:4px;">
+                      {job.total_anomalies} event{'s' if job.total_anomalies != 1 else ''}
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Evidence Section -->
+        {"" if not img_tags else f"""
+        <tr>
+          <td style="padding:0 36px 24px;">
+            <div style="color:#94a3b8;font-size:12px;font-weight:700;letter-spacing:0.08em;
+                        text-transform:uppercase;margin-bottom:12px;">
+              Evidence Captures ({len(evidence_items)} shown)
+            </div>
+            <div>{img_tags}</div>
+          </td>
+        </tr>"""}
+
+        <!-- Action note -->
+        <tr>
+          <td style="padding:0 36px 28px;">
+            <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);
+                        border-radius:10px;padding:14px 18px;">
+              <div style="color:#f59e0b;font-size:12px;font-weight:700;margin-bottom:4px;">
+                Action Required
+              </div>
+              <div style="color:#94a3b8;font-size:13px;line-height:1.5;">
+                Please review the evidence captures above and take appropriate action.
+                Log in to ExamGuard AI to view the full analysis report and manage this alert.
+              </div>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#080d1a;padding:18px 36px;text-align:center;
+                     border-top:1px solid rgba(255,255,255,0.06);">
+            <div style="color:#334155;font-size:11px;line-height:1.6;">
+              This is an automated alert from <strong style="color:#475569;">ExamGuard AI</strong>.<br>
+              Do not reply to this email. Contact your HOEC for further instructions.
+            </div>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+    # Plain text fallback
+    plain_body = (
+        f"EXAMGUARD AI — ANOMALY ALERT\n"
+        f"{'='*50}\n\n"
+        f"Invigilator : {invig.full_name} <{invig.email}>\n"
+        f"Lecture Hall : {lh.name} ({lh.lh_code})\n"
+        f"Camera ID    : {cam_id}\n"
+        f"Session      : {session}\n"
+        f"Date/Time    : {date_str} at {time_str}\n"
+        f"Anomalies    : {job.total_anomalies} event(s) detected\n\n"
+        f"Please log in to ExamGuard AI to review the full report.\n"
+    )
+
+    try:
+        msg = EmailMultiAlternatives(
+            subject=subject,
+            body=plain_body,
+            from_email=dj_settings.DEFAULT_FROM_EMAIL,
+            to=[invig.email],
+        )
+        msg.attach_alternative(html_body, "text/html")
+        msg.mixed_subtype = "related"
+        for att in attachments:
+            msg.attach(att)
+        msg.send(fail_silently=False)
+
+        logger.info("Alert email sent to %s for job %s", invig.email, job_id)
+        return JsonResponse({
+            "ok": True,
+            "message": f"Alert sent to {invig.full_name} ({invig.email})"
+        })
+    except Exception as exc:
+        logger.error("Failed to send alert email for job %s: %s", job_id, exc)
+        return JsonResponse({"error": str(exc)}, status=500)
+

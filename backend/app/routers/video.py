@@ -1,10 +1,14 @@
 """
 Video analysis router — real-time SSE streaming.
 
-Detection pipeline (in order of preference):
-  1. Trained YOLO model (ml/weights/exam_anomaly_best.pt) — REAL detections
-  2. ffmpeg packet-size motion proxy — highlights most-active frames
-  3. No-model mode — streams raw video with no detection annotations
+Detection pipeline:
+  1. PoseAnomalyDetector (PCA on normal-act keypoints) — per-person NORMAL/CHEATING
+  2. Motion-proxy fallback (no model) — raw frame stream
+
+Evidence rules:
+  - A person must hold a "CHEATING" state for ≥ 5 consecutive frames (~0.6 s at 8 FPS)
+    before the frame is clipped as evidence.
+  - Evidence frames contain ONLY red-boxed (anomalous) persons — green boxes are hidden.
 
 Frame delivery:
   - ffmpeg MJPEG pipe → Python → annotate → base64 JPEG → SSE → browser
@@ -30,21 +34,25 @@ ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 if ROOT_PATH not in sys.path:
     sys.path.insert(0, ROOT_PATH)
 
-from ml.models.behavior_analyzer import BehaviorAnalyzer
+from ml.models.pose_anomaly_detector import PoseAnomalyDetector
 from ultralytics import YOLO
 
-_model = None
-def get_model():
-    global _model
-    if _model is None:
-        _model = YOLO('yolov8s-pose.pt')
-    return _model
+# ── Shared pose model (lazy-loaded) ───────────────────────────
+_pose_model = None
+def _get_pose_model():
+    global _pose_model
+    if _pose_model is None:
+        _pose_model = YOLO('yolov8s-pose.pt')
+    return _pose_model
+
+# ── Frames a person must hold CHEATING state before evidence ──
+EVIDENCE_MIN_FRAMES = 5
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-FFMPEG = os.environ.get("FFMPEG_BIN", "ffmpeg.exe")
-FFPROBE = os.environ.get("FFPROBE_BIN", "ffprobe.exe")
+FFMPEG = os.environ.get("FFMPEG_BIN", "ffmpeg")
+FFPROBE = os.environ.get("FFPROBE_BIN", "ffprobe")
 
 # ── Class metadata (matches ExamCheatingDataset folder names) ────
 # These are the exact classes trained on your dataset:
@@ -466,111 +474,177 @@ async def _stream_video(job_id: str, video_rel: str) -> AsyncGenerator[str, None
         stderr=subprocess.DEVNULL,
     )
 
-    frame_count = 0
-    total_anomalies = 0
-    anomaly_log = []
-    evidence_sent = set()
-    start_time = time.time()
-    
-    analyzer = BehaviorAnalyzer(fps=OUT_FPS, sustained_seconds=2.0, required_episodes=2)
-    model = get_model()
+    frame_count        = 0
+    total_anomalies    = 0
+    anomaly_log        = []
+    # track_id → consecutive frames classified as CHEATING
+    red_frame_counter: dict = {}
+    # track_ids for which we have already emitted evidence this "episode"
+    evidence_emitted: set   = set()
+
+    pose_model = _get_pose_model()
+    detector   = PoseAnomalyDetector.get()
 
     try:
         async for jpeg_bytes in _iter_mjpeg(proc):
             frame_count += 1
             timestamp = frame_count / OUT_FPS
-            progress = round(min(100.0, timestamp / max(duration, 0.001) * 100), 1)
-            det_payload = []
-            
+            progress  = round(min(100.0, timestamp / max(duration, 0.001) * 100), 1)
+
+            # ── Per-frame detection results ──────────────────────────
+            # List of dicts for anomalous persons only (used for SSE payload)
+            det_payload  = []   # anomalies this frame
+            all_persons  = []   # all persons (for live stream annotation)
+
+            annotated = jpeg_bytes  # default: raw frame
+
             if has_cv2:
-                import cv2, numpy as np
-                arr = np.frombuffer(jpeg_bytes, dtype=np.uint8)
+                import cv2
+                import numpy as np
+
+                arr   = np.frombuffer(jpeg_bytes, dtype=np.uint8)
                 frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+
                 if frame is not None:
-                    results = await loop.run_in_executor(None, lambda: model.track(frame, persist=True, verbose=False, imgsz=1280, conf=0.15))
-                    states = {}
-                    
+                    # Run pose model with tracking
+                    results = await loop.run_in_executor(
+                        None,
+                        lambda: pose_model.track(
+                            frame, persist=True, verbose=False,
+                            imgsz=1280, conf=0.15
+                        )
+                    )
+
                     for r in results:
-                        boxes = r.boxes.xyxy.cpu().numpy()
-                        classes = r.boxes.cls.cpu().numpy()
-                        confs = r.boxes.conf.cpu().numpy()
-                        track_ids = r.boxes.id.int().cpu().numpy() if r.boxes.id is not None else []
-                        keypoints = r.keypoints.data.cpu().numpy() if r.keypoints is not None and r.keypoints.data is not None else []
+                        if r.boxes is None:
+                            continue
+                        boxes      = r.boxes.xyxy.cpu().numpy()
+                        confs      = r.boxes.conf.cpu().numpy()
+                        track_ids  = (
+                            r.boxes.id.int().cpu().numpy()
+                            if r.boxes.id is not None else []
+                        )
+                        kps_all    = (
+                            r.keypoints.data.cpu().numpy()
+                            if r.keypoints is not None and r.keypoints.data is not None
+                            else []
+                        )
 
                         for i in range(len(boxes)):
                             x1, y1, x2, y2 = map(int, boxes[i])
-                            conf = confs[i]
-                            cls_id = int(classes[i])
-                            track_id = int(track_ids[i]) if i < len(track_ids) else -1
-                            
-                            label = model.names[cls_id] if hasattr(model, 'names') else str(cls_id)
-                            color = (0, 255, 0)
-                            state = "NORMAL"
-                            anom_conf = 0.0
+                            det_conf  = float(confs[i])
+                            track_id  = int(track_ids[i]) if i < len(track_ids) else -1
+                            kp_raw    = kps_all[i].tolist() if i < len(kps_all) else []
 
-                            kp_raw = keypoints[i] if i < len(keypoints) else []
-                            
-                            kp_norm = [[float(k[0])/SCALE_W, float(k[1])/SCALE_H, float(k[2])] for k in kp_raw]
-                            
-                            state, anom_conf = analyzer.update_person(track_id, kp_norm)
-                            states[track_id] = state
+                            # ── Classify pose ──────────────────────
+                            state, anom_conf = detector.classify(
+                                kp_raw, box=[x1, y1, x2, y2]
+                            )
+                            color = detector.color_for(state)
+                            color_bgr = (color[2], color[1], color[0])  # RGB→BGR for cv2
 
-                            if state == "SUSPICIOUS":
-                                color = (0, 0, 255)
+                            # ── Update red-frame counter ────────────
+                            if state == "CHEATING":
+                                red_frame_counter[track_id] = red_frame_counter.get(track_id, 0) + 1
+                            else:
+                                # Reset counter when person goes back to normal
+                                if track_id in red_frame_counter:
+                                    red_frame_counter[track_id] = 0
+                                    evidence_emitted.discard(track_id)
+
+                            person_info = {
+                                "track_id":   track_id,
+                                "state":       state,
+                                "confidence":  round(anom_conf, 3),
+                                "bbox":        [float(x1), float(y1), float(x2), float(y2)],
+                                "color":       color,
+                                "kp_raw":      kp_raw,
+                            }
+                            all_persons.append(person_info)
+
+                            if state == "CHEATING":
                                 det_payload.append({
-                                    "track_id": track_id,
-                                    "class": "BEHAVIOR_ANOMALY",
-                                    "confidence": anom_conf,
-                                    "bbox": [float(x1), float(y1), float(x2), float(y2)]
+                                    "track_id":   track_id,
+                                    "class":      "CHEATING",
+                                    "confidence": round(anom_conf, 3),
+                                    "bbox":       [float(x1), float(y1), float(x2), float(y2)],
                                 })
-                            elif state == "WARNING":
-                                color = (0, 165, 255) # Orange
 
-                            cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-                            cv2.putText(frame, f"ID:{track_id} {state} {anom_conf:.2f}", (x1, max(10, y1-10)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
-                            
-                            for kpt in kp_raw:
-                                kx, ky, kconf = int(kpt[0]), int(kpt[1]), float(kpt[2])
-                                if kconf > 0.4:
-                                    cv2.circle(frame, (kx, ky), 3, color, -1)
+                    # ── Draw annotations on live stream frame ────────
+                    # Draw ALL persons (green for normal, red for cheating)
+                    for p in all_persons:
+                        x1, y1, x2, y2 = map(int, p["bbox"])
+                        tid    = p["track_id"]
+                        state  = p["state"]
+                        conf   = p["confidence"]
+                        bgr    = (p["color"][2], p["color"][1], p["color"][0])
+                        label  = f"ID:{tid} {state} {conf:.2f}"
 
-                    ret, buffer = cv2.imencode('.jpg', frame)
-                    if ret:
-                        annotated = buffer.tobytes()
-                    else:
-                        annotated = jpeg_bytes
-                else:
-                    annotated = jpeg_bytes
-            else:
-                annotated = jpeg_bytes
+                        cv2.rectangle(frame, (x1, y1), (x2, y2), bgr, 2)
+                        cv2.putText(
+                            frame, label, (x1, max(10, y1 - 10)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.55, bgr, 2
+                        )
+                        # Draw keypoints
+                        for kpt in p["kp_raw"]:
+                            if len(kpt) >= 3 and float(kpt[2]) > 0.4:
+                                cv2.circle(frame, (int(kpt[0]), int(kpt[1])), 3, bgr, -1)
 
-            if det_payload:
-                ts_key = round(timestamp, 0)
-                if ts_key not in evidence_sent:
-                    evidence_sent.add(ts_key)
-                    total_anomalies += 1
+                    ret, buffer = cv2.imencode(".jpg", frame)
+                    annotated   = buffer.tobytes() if ret else jpeg_bytes
 
-                    det0 = det_payload[0]
-                    anomaly_log.append({
-                        "frame":      frame_count,
-                        "timestamp":  round(timestamp, 2),
-                        "class":      det0["class"],
-                        "confidence": det0["confidence"],
-                        "bbox":       det0["bbox"],
-                    })
-                    if len(anomaly_log) > 200:
-                        anomaly_log.pop(0)
+            # ── 5-frame evidence gate ────────────────────────────────
+            # For each track_id that has been red for >= EVIDENCE_MIN_FRAMES,
+            # build an evidence frame (red boxes only) and emit once per episode.
+            if has_cv2 and det_payload:
+                for p in all_persons:
+                    tid = p["track_id"]
+                    if (
+                        p["state"] == "CHEATING"
+                        and red_frame_counter.get(tid, 0) >= EVIDENCE_MIN_FRAMES
+                        and tid not in evidence_emitted
+                    ):
+                        evidence_emitted.add(tid)
+                        total_anomalies += 1
 
-                    ev_payload = {
-                        "type":       "evidence",
-                        "timestamp":  round(timestamp, 2),
-                        "class":      det0["class"],
-                        "confidence": det0["confidence"],
-                        "bbox":       det0["bbox"],
-                        "image":      base64.b64encode(annotated).decode(),
-                        "mime_type":  "image/jpeg",
-                    }
-                    yield f"data: {json.dumps(ev_payload)}{sep}"
+                        # ── Build evidence frame: only red-boxed persons ──
+                        import cv2 as _cv2
+                        arr_ev   = np.frombuffer(jpeg_bytes, dtype=np.uint8)
+                        ev_frame = _cv2.imdecode(arr_ev, _cv2.IMREAD_COLOR)
+                        if ev_frame is not None:
+                            for ep in all_persons:
+                                if ep["state"] != "CHEATING":
+                                    continue  # skip green boxes in evidence
+                                ex1, ey1, ex2, ey2 = map(int, ep["bbox"])
+                                red_bgr = (0, 0, 200)
+                                _cv2.rectangle(ev_frame, (ex1, ey1), (ex2, ey2), red_bgr, 3)
+                                elabel = f"ID:{ep['track_id']} CHEATING {ep['confidence']:.2f}"
+                                _cv2.putText(
+                                    ev_frame, elabel,
+                                    (ex1, max(10, ey1 - 10)),
+                                    _cv2.FONT_HERSHEY_SIMPLEX, 0.6, red_bgr, 2
+                                )
+                                for kpt in ep["kp_raw"]:
+                                    if len(kpt) >= 3 and float(kpt[2]) > 0.4:
+                                        _cv2.circle(ev_frame, (int(kpt[0]), int(kpt[1])), 4, red_bgr, -1)
+
+                            _, ev_buf = _cv2.imencode(".jpg", ev_frame)
+                            ev_bytes  = ev_buf.tobytes()
+                        else:
+                            ev_bytes = jpeg_bytes
+
+                        anomaly_log.append({
+                            "frame":      frame_count,
+                            "timestamp":  round(timestamp, 2),
+                            "track_id":   tid,
+                            "class":      "CHEATING",
+                            "confidence": p["confidence"],
+                            "bbox":       p["bbox"],
+                        })
+                        if len(anomaly_log) > 200:
+                            anomaly_log.pop(0)
+
+                        yield f'data: {json.dumps({"type":"evidence","timestamp":round(timestamp,2),"track_id":tid,"class":"CHEATING","confidence":p["confidence"],"bbox":p["bbox"],"image":base64.b64encode(ev_bytes).decode(),"mime_type":"image/jpeg"})}{sep}'
 
             yield f'data: {json.dumps({"type":"frame","frame":frame_count,"progress":progress,"anomalies":total_anomalies,"detections":det_payload,"image":base64.b64encode(annotated).decode(),"mime_type":"image/jpeg"})}{sep}'
             await asyncio.sleep(0)

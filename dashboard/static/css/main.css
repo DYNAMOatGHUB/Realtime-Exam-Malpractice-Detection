@@ -20,6 +20,7 @@
   --glass-bg: rgba(13, 15, 26, 0.65);
   --glass-blur: 16px;
   --glass-border: rgba(255, 255, 255, 0.08);
+  --topbar-bg: rgba(6, 8, 16, 0.85);
 
   /* Overlays */
   --bg-hover: rgba(255, 255, 255, 0.05);
@@ -65,6 +66,7 @@
   /* Glass */
   --glass-bg: rgba(255, 255, 255, 0.75);
   --glass-border: rgba(0, 0, 0, 0.1);
+  --topbar-bg: rgba(255, 255, 255, 0.85);
 
   /* Overlays */
   --bg-hover: rgba(0, 0, 0, 0.05);
@@ -365,7 +367,7 @@ code {
   height: var(--topbar-height);
   position: sticky;
   top: 0;
-  background: rgba(6, 8, 16, 0.85);
+  background: var(--topbar-bg);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
   display: flex;

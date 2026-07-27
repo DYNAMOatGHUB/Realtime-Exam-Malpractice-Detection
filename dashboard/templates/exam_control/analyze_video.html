@@ -694,7 +694,7 @@
       <rect x="2" y="3" width="20" height="14" rx="2"/>
       <path d="M8 21h8M12 17v4"/>
     </svg>
-    Processing Jobs
+    Analysis Jobs
     <span class="jobs-count-pill">{{ jobs|length }} total</span>
   </div>
 </div>
@@ -772,7 +772,7 @@
         {% if job.status == 'processing' or job.status == 'pending' %}
           View Live Analysis
         {% else %}
-          Replay Analysis
+          View Results
         {% endif %}
       </a>
 
